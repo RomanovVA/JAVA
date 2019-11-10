@@ -1,0 +1,104 @@
+package com.geekbrains.training.homework6;
+import java.util.*;
+public class MainApp {
+    public static void main(String[] args) {
+        final String ANSI_BLUE = "\u001B[34m";
+        final String ANSI_RESET = "\u001B[0m";
+
+        System.out.println("+-------------------+");
+        System.out.println("| УРОК 6. ЗАДАЧА 1. |");
+        System.out.println("+-------------------+");
+        final String[] words = {"alpha", "beta", "gamma", "delta", "sigma", "omega"};
+        String[] someWords = new String[20];
+        for (int i = 0; i < someWords.length; i++) {
+            someWords[i] = words[(int) (Math.random() * ((words.length - 1) + 1))];
+        }
+        System.out.println("Исходный массив с набором слов:");
+        System.out.println(ANSI_BLUE + Arrays.deepToString(someWords) + ANSI_RESET);
+
+        Set<String> uniqueWords = new HashSet<>(Arrays.asList(someWords));
+        System.out.println("Уникальные слова в наборе слов:");
+        System.out.println(ANSI_BLUE + uniqueWords + ANSI_RESET);
+
+        Map<String, Integer> frequencyOfWords = new HashMap<>();
+        for (String word : someWords) {
+            frequencyOfWords.put(word, frequencyOfWords.getOrDefault(word, 0) + 1);
+        }
+        System.out.println("Подсчёт частоты слов:");
+        System.out.println(ANSI_BLUE + frequencyOfWords + ANSI_RESET);
+        System.out.println();
+
+
+        System.out.println("+-------------------+");
+        System.out.println("| УРОК 6. ЗАДАЧА 2. |");
+        System.out.println("+-------------------+");
+        PhoneBook phoneBook = new PhoneBook();
+
+        phoneBook.add("Иванов", "(922)111-11-11");
+        phoneBook.add("Петров", "(906)222-22-22");
+        phoneBook.add("Сидоров", "(468)333-33-33");
+        phoneBook.add("Петров", "(802)444-44-44");
+        phoneBook.add("Иванов", "(343)555-55-55");
+        phoneBook.add("Васечкин", "(968)666-66-66");
+        phoneBook.add("Сидоров", "(731)777-77-77");
+        phoneBook.add("Петров", "(654)888-88-88");
+
+        System.out.println("Телефонный справочник:");
+        phoneBook.printInfo();
+        System.out.println("--------");
+        System.out.println();
+
+        String abonent = "Григорьев";
+        System.out.println(abonent + ": " + phoneBook.get(abonent));
+        abonent = "Петров";
+        System.out.println(abonent + ": " + phoneBook.get(abonent));
+        abonent = "Васечкин";
+        System.out.println(abonent + ": " + phoneBook.get(abonent));
+        abonent = null;
+        System.out.println(abonent + ": " + phoneBook.get(abonent));
+        abonent = "Сидоров";
+        System.out.println(abonent + ": " + phoneBook.get(abonent));
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework6;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+public class PhoneBook {
+    private Map<String, HashSet<String>> phoneBook;
+
+    PhoneBook() {
+        this.phoneBook = new HashMap<>();
+    }
+
+    Set<String> get(String abonent) {
+        if (phoneBook.containsKey(abonent)) {
+            return phoneBook.get(abonent);
+        }
+        Set<String> noSuchAbonent = new HashSet<>();
+        noSuchAbonent.add("Нет такого абонента в справочнике!");
+        return noSuchAbonent;
+    }
+
+    void add(String abonent, String phone) {
+        HashSet<String> phones;
+        if (phoneBook.containsKey(abonent)) {
+            phones = phoneBook.get(abonent); // уже есть такая фамилия
+        } else {
+            phones = new HashSet<>(); // новая фамилия
+        }
+        phones.add(phone);
+        phoneBook.put(abonent, phones);
+    }
+
+    void printInfo() {
+        for (Map.Entry<String, HashSet<String>> abonent : phoneBook.entrySet()) {
+            System.out.println(abonent.getKey() + ": " + abonent.getValue());
+        }
+    }
+}
