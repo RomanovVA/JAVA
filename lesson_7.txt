@@ -1,0 +1,208 @@
+///////////////////////////////////////////////////////////////////////////
+//  МОЖНО ПРОВЕРЯТЬ
+///////////////////////////////////////////////////////////////////////////
+
+
+package com.geekbrains.training.homework7.Roads;
+import com.geekbrains.training.homework7.Car;
+// заготовка для участков дорог гонки
+public abstract class PatternRaceStage {
+    int length;
+    String name;
+
+    public abstract void go(Car car);
+}
+
+
+
+
+package com.geekbrains.training.homework7.Roads;
+import com.geekbrains.training.homework7.Car;
+import java.util.concurrent.Semaphore;
+// участок гоночной трассы - тоннель
+public class Tunnel extends PatternRaceStage {
+    // ограничим передвижение по тоннелю 4-мя машинами (одновременно захватить семафор могут только MAX_CARS_IN_TUNNEL потоков методом acquire()).
+    // остальные машины ждут - становятся в очередь, пока одна из машин не покинет тоннель (не освободит семафор методом release()).
+    // семафор прописываем внутри класса "тоннель", чтобы можно было добавлять на трассу несколько тоннелей с разными параметрами
+    private Semaphore semaphore;
+
+    public Tunnel(int length, int maxCarsInTunnel) {
+        this.length = length;
+        this.name = "Тоннель " + this.length + " метров";
+        semaphore = new Semaphore(maxCarsInTunnel);
+    }
+
+    @Override
+    public void go(Car car) {
+        try {
+            System.out.println(car.getName() + " готовится к этапу(ждёт): " + name);
+            semaphore.acquire();
+            System.out.println(car.getName() + " начал этап: " + name);
+            Thread.sleep(length / car.getSpeed() * 1000); // движение по тоннелю
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            System.out.println(car.getName() + " закончил этап: " + name);
+            semaphore.release();
+        }
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework7.Roads;
+import com.geekbrains.training.homework7.Car;
+// участок гоночной трассы - дорога
+public class Road extends PatternRaceStage {
+    public Road(int length) {
+        this.length = length;
+        this.name = "Дорога " + this.length + " метров";
+    }
+
+    @Override
+    public void go(Car car) {
+        try {
+            System.out.println(car.getName() + " начал этап: " + name);
+            Thread.sleep(length / car.getSpeed() * 1000); // движение по дороге
+            System.out.println(car.getName() + " закончил этап: " + name);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework7.Roads;
+import java.util.ArrayList;
+import java.util.Arrays;
+// гоночная трасса, состоящая из участков
+public class RacingTrack {
+    private ArrayList<PatternRaceStage> raceStages; // тут хранятся участки гоночной трассы
+
+    public ArrayList<PatternRaceStage> getStages() {
+        return raceStages;
+    }
+
+    public RacingTrack(PatternRaceStage... stages) {
+        this.raceStages = new ArrayList<>(Arrays.asList(stages));
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework7;
+import com.geekbrains.training.homework7.Roads.RacingTrack;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+// объект "Машина" - Runnable, чтобы поток мог запустить нашу задачу (run)
+// все промежуточные объявления о состоянии прохождения машиной трассы - пишем здесь
+public class Car implements Runnable {
+    private static int winPlace;
+    private RacingTrack racingTrack;
+    private int speed;
+    private String name;
+    private CyclicBarrier cyclicBarrier;
+
+    static {
+        winPlace = 1;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getSpeed() {
+        return speed;
+    }
+
+    Car(String name, int speed, RacingTrack race, CyclicBarrier cyclicBarrier) {
+        this.name = name;
+        this.speed = speed;
+        this.racingTrack = race;
+        this.cyclicBarrier = cyclicBarrier;
+    }
+
+    @Override
+    public void run() {
+        try {
+            System.out.println(this.name + " готовится");
+            Thread.sleep((int) (Math.random() * 4000));
+            System.out.println(this.name + " готов (speed = " + this.speed + ")");
+            cyclicBarrier.await(); // ставим барьер, чтобы все машины приготовились
+            cyclicBarrier.await(); // не разрешаем старт, пока не отпечатается объявление о старте в Main-е
+            System.out.println(this.name + " стартовал!");
+
+            // машина последовательно проходит участки построенной трассы
+            for (int i = 0; i < racingTrack.getStages().size(); i++) {
+                racingTrack.getStages().get(i).go(this);
+            }
+            // машина прошла все участки и пересекла финиш - проверим, какое заняла место
+            checkWinPLace(this);
+            cyclicBarrier.await(); // ждём остальных у финиша
+        } catch (InterruptedException | BrokenBarrierException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // определение победителя
+    private static synchronized void checkWinPLace(Car car) { // синхронизация по методу
+        // критическая секция - зашедший поток смотрит на монитор:
+        // - если монитор занят, то поток зайти в неё не сможет
+        // - если монитор свободен, то поток заходит в критическую секцию и захватывает монитор
+        // в роли монитора - объект, у которого выполняется данный метод
+        final String ANSI_RESET = "\u001B[0m";
+        final String ANSI_GREEN = "\u001B[32m";
+        System.out.println(ANSI_GREEN + car.name + " - финишировал, место: " + winPlace + String.valueOf((winPlace == 1) ? " - WINNER !!!" : "") + ANSI_RESET);
+        winPlace = winPlace + 1;
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework7;
+import com.geekbrains.training.homework7.Roads.RacingTrack;
+import com.geekbrains.training.homework7.Roads.Road;
+import com.geekbrains.training.homework7.Roads.Tunnel;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+public class MainApp {
+    // все важные объявления пишем здесь
+    public static void main(String[] args) {
+        final String ANSI_BLUE = "\u001B[34m";
+        final String ANSI_RESET = "\u001B[0m";
+        final int CARS_COUNT = 4;
+        final int MAX_CARS_IN_TUNNEL = 2;
+
+        System.out.println(ANSI_BLUE + "ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Подготовка!!!" + ANSI_RESET);
+
+        // генерируем гоночную трассу из трёх участков
+        RacingTrack racingTrack = new RacingTrack(new Road(60), new Tunnel(80, MAX_CARS_IN_TUNNEL), new Road(40));
+        // генерируем барьер: кол-во машин + 1 поток Main
+        CyclicBarrier cyclicBarrier = new CyclicBarrier(CARS_COUNT+1);
+        // генерируем машины
+        Car[] cars = new Car[CARS_COUNT];
+        for (int i = 0; i < CARS_COUNT; i++) {
+            cars[i] = new Car("Участник #" + String.valueOf(i + 1), (int) (Math.random() * 10) + 20, racingTrack, cyclicBarrier);
+        }
+        // запускаем потоки, когда они все будут готовы
+        for (Car car : cars) {
+            new Thread(car).start();
+        }
+
+        // Памятка: если выполнение программы где-то зависло - значит НЕ ВСЕ потоки собрались у барьера + баланс await-ов!!!
+        try {
+            cyclicBarrier.await(); // подготовка участников: барьер ждёт, когда все машины скажут что готовы
+            System.out.println(ANSI_BLUE + "ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка началась!!!" + ANSI_RESET);
+            cyclicBarrier.await(); // защита от того, чтобы машины не стартовали раньше вышестоящего объявления - этот барьер уже отпускает всех
+            cyclicBarrier.await(); // собираем всех на финише - только после этого гонка считается законченной
+        } catch (InterruptedException | BrokenBarrierException e) {
+            e.printStackTrace();
+        }
+        System.out.println(ANSI_BLUE + "ВАЖНОЕ ОБЪЯВЛЕНИЕ >>> Гонка закончилась!!!" + ANSI_RESET);
+    }
+}

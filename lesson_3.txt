@@ -1,0 +1,323 @@
+package com.geekbrains.training.homework3.entities;
+
+public class Task {
+    public enum Status {
+        CREATED("Создана"), CLOSED("Закрыта"), REJECTED("Отклонена");
+
+        private String rusTitle;
+
+        Status(String rusTitle) {
+            this.rusTitle = rusTitle;
+        }
+
+        public String getRusTitle() {
+            return rusTitle;
+        }
+    }
+
+    public enum Results {
+        TASKEXIST("Есть такая задача"), TASKFULL("Список задач заполнен"), OK("OK");
+        private String rusTitle;
+
+        Results(String rusTitle) {
+            this.rusTitle = rusTitle;
+        }
+
+        public String getRusTitle() {
+            return rusTitle;
+        }
+    }
+
+    private Long id;
+    private String title;
+    private String owner;
+    private String executor;
+    private String description;
+    private Status status;
+
+    // конструктор класса
+    public Task(Long id, String title, String owner, String executor, String description, Status status) {
+        this.id = id;
+        this.title = title;
+        this.owner = owner;
+        this.executor = executor;
+        this.description = description;
+        this.status = status;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Задача [id = %d, title = %s, owher = %s, executor = %s, description = %s, status = %s]", id, title, owner, executor, description, status.getRusTitle());
+    }
+
+    // если переопределяем equals, то необходимо также синхронно переопределить hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || !(o instanceof Task)) {
+            return false;
+        }
+        if (this == o) {
+            return true;
+        }
+        Task another = (Task) o;
+        return this.id.equals(another.id) && this.title.equals(another.title);
+    }
+
+    // если объекты равны по equals, то их hashCode тоже должны быть равны
+    // если объекты НЕ равны по equals, то их hashCode желательно тоже НЕ должны совпадать
+    @Override
+    public int hashCode() {
+        return id.intValue() + title.hashCode();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+}
+
+
+
+
+
+package com.geekbrains.training.homework3.services;
+
+import com.geekbrains.training.homework3.entities.Task;
+import com.geekbrains.training.homework3.TaskInterface;
+
+public class TaskRepository implements TaskInterface {
+    private Task[] tasks;
+
+    public TaskRepository() {
+        prepare();
+    }
+
+    @Override
+    public void prepare() {
+        this.tasks = new Task[10];
+        for (int i = 0; i < tasks.length; i += 2) {
+            tasks[i] = new Task(Long.valueOf(i), "Task" + i, "Owner" + i, "Executor" + i, "Create task " + i, Task.Status.CREATED);
+        }
+    }
+
+    @Override
+    public boolean isTaskExist(Long id, String title) {
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId().equals(id) && tasks[i].getTitle().equals(title)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Task findTaskById(Long id) {
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId().equals(id)) {
+                return tasks[i];
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Task.Results addTask(Long id, String title, String owner, String executor, String description) {
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId().equals(id) && tasks[i].getTitle().equals(title)) {
+                return Task.Results.TASKEXIST;
+            }
+        }
+
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] == null) {
+                tasks[i] = new Task(id, title, owner, executor, description, Task.Status.CREATED);
+                return Task.Results.OK;
+            }
+        }
+        return Task.Results.TASKFULL;
+    }
+
+    @Override
+    public boolean editTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId().equals(id) && tasks[i].getTitle().equals(title)) {
+                tasks[i] = new Task(id, title, owner, executor, description, status);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean delTask(Long id) {
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId().equals(id)) {
+                tasks[i] = null;
+                return true; // считаем, что не может быть несколько задач с одинаковым id
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void printList() {
+        System.out.println("----------------");
+        System.out.println("Список задач:");
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null) {
+                System.out.println(tasks[i]);
+            }
+        }
+        System.out.println("----------------");
+    }
+}
+
+
+
+
+
+package com.geekbrains.training.homework3;
+
+import com.geekbrains.training.homework3.entities.Task;
+
+public interface TaskInterface {
+    void prepare();
+
+    boolean isTaskExist(Long id, String title);
+
+    Task findTaskById(Long id);
+
+    Task.Results addTask(Long id, String title, String owner, String executor, String description);
+
+    boolean editTask(Long id, String title, String owner, String executor, String description, Task.Status status);
+
+    boolean delTask(Long Id);
+
+    void printList();
+}
+
+
+
+
+
+package com.geekbrains.training.homework3.services;
+
+import com.geekbrains.training.homework3.entities.Task;
+import com.geekbrains.training.homework3.services.TaskRepository;
+
+public class TaskService {
+    TaskRepository taskRepository;
+
+    public TaskService() {
+        taskRepository = new TaskRepository();
+    }
+
+    public void isTaskExist(Long id, String title) {
+        if (taskRepository.isTaskExist(id, title)) {
+            System.out.printf("Запись найдена [id = %d, title = %s]%n", id, title);
+        } else {
+            System.out.printf("Запись отсутствует [id = %d, title = %s]%n", id, title);
+        }
+    }
+
+    public void findTaskById(Long id) {
+        Task task = taskRepository.findTaskById(id);
+        if (task == null) {
+            System.out.printf("Запись отсутствует [id = %d]%n", id);
+        } else {
+            System.out.println("Запись найдена: " + task.toString());
+        }
+    }
+
+    public void addTask(Long id, String title, String owner, String executor, String description) {
+        switch (taskRepository.addTask(id, title, owner, executor, description)) {
+            case TASKEXIST:
+                System.out.printf("Ошибка добавления: уже есть такая запись [id = %d, title = %s]%n", id, title);
+                break;
+            case TASKFULL:
+                System.out.println("Ошибка добавления: список задач заполнен");
+                break;
+            case OK:
+                System.out.printf("Запись успешно добавлена [id = %d, title = %s, owner = %s, executor = %s, description = %s]%n", id, title, owner, executor, description);
+                break;
+            default:
+                System.out.println("Неизвестная ошибка добавления записи");
+                break;
+        }
+    }
+
+    public void editTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
+        if (taskRepository.editTask(id, title, owner, executor, description, status)) {
+            System.out.printf("Запись успешно обновлена [id = %d, title = %s]%n", id, title);
+        } else {
+            System.out.printf("Ошибка обновления - запись не существует [id = %d, title = %s]%n", id, title);
+        }
+    }
+
+    public void delTask(Long id) {
+        if (taskRepository.delTask(id)) {
+            System.out.printf("Запись успешно удалена [id = %d]%n", id);
+        } else {
+            System.out.printf("Ошибка удаления - запись не существует [id = %d]%n", id);
+        }
+    }
+
+    public void printList() {
+        taskRepository.printList();
+    }
+}
+
+
+
+
+
+package com.geekbrains.training.homework3;
+
+import com.geekbrains.training.homework3.entities.Task;
+import com.geekbrains.training.homework3.services.TaskRepository;
+import com.geekbrains.training.homework3.services.TaskService;
+
+public class MainApp {
+    public static void main(String[] args) {
+        // проверим создание задачи через класс Task
+        Task task = new Task(1L, "Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CREATED);
+        System.out.println(task);
+        System.out.println(task.getId());
+        System.out.println(task.getTitle());
+        System.out.println("----------------");
+
+        // проверим работу equals класса Task
+        Task another1 = new Task(1L, "Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CREATED);
+        Task another2 = new Task(2L, "Task_2", "Owner_2", "Executor_2", "Create task 2", Task.Status.CREATED);
+        System.out.println(task.equals(task));
+        System.out.println(task.equals(another1));
+        System.out.println(task.equals(another2));
+        System.out.println(task.equals(null));
+        System.out.println("----------------");
+
+        // проверим работу сервиса
+        TaskService taskService = new TaskService();
+        taskService.printList();
+        taskService.findTaskById(0L);
+        taskService.isTaskExist(0L, "Task0");
+        taskService.findTaskById(1L);
+        taskService.isTaskExist(1L, "Task1");
+        taskService.addTask(1L, "Task1", "owner1", "executor1", "Create task 1");
+        taskService.addTask(1L, "Task1", "owner1", "executor1", "Create task 1");
+        taskService.findTaskById(1L);
+        taskService.printList();
+        taskService.editTask(1L, "Task1", "NewOwner1", "NewExecutor1", "NewDescription1", Task.Status.REJECTED);
+        taskService.editTask(2L, "Task2", "NewOwner2", "NewExecutor2", "NewDescription2", Task.Status.CLOSED);
+        taskService.printList();
+        taskService.delTask(1L);
+        taskService.delTask(1L);
+        taskService.printList();
+        for (int i = 1; i < 14; i += 2) {
+            taskService.addTask(Long.valueOf(i), "Task" + i, "owner" + i, "executor" + i, "Create task " + i);
+        }
+        taskService.printList();
+    }
+}
