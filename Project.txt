@@ -1,0 +1,572 @@
+///////////////////////////////////////////////////////////////////////////////////////
+//  П Р О Е К Т
+///////////////////////////////////////////////////////////////////////////////////////
+
+package com.geekbrains.training.homework.exceptions;
+public class TaskAlreadyExist extends RuntimeException {
+    private int indexArray;
+    private Long id;
+    private String title;
+
+    public int getIndexArray() {
+        return indexArray;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public TaskAlreadyExist(Long id, String title, int indexArray) {
+        super("Ошибка: такая запись [id = " + id + ", title = " + title + "] уже существует в ячейке " + indexArray);
+        this.indexArray = indexArray;
+        this.id = id;
+        this.title = title;
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework.exceptions;
+public class TaskNoFound extends RuntimeException {
+    public TaskNoFound(String message) {
+        super("Ошибка: " + message + "!");
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework.entities;
+public class Task {
+    public enum Status {
+        CREATED("Создана"), IN_WORK("В работе"), CLOSED("Закрыта"), REJECTED("Отклонена"), SUSPENDED("Приостановлена");;
+
+        private String rusTitle;
+
+        Status(String rusTitle) {
+            this.rusTitle = rusTitle;
+        }
+
+        public String getRusTitle() {
+            return rusTitle;
+        }
+    }
+
+    private Long id;
+    private String title;
+    private String owner;
+    private String executor;
+    private String description;
+    private Status status;
+
+    // конструктор класса
+    public Task(Long id, String title, String owner, String executor, String description, Status status) {
+        this.id = id;
+        this.title = title;
+        this.owner = owner;
+        this.executor = executor;
+        this.description = description;
+        this.status = status;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Задача [id = %d, title = %s, owher = %s, executor = %s, description = %s, status = %s]", id, title, owner, executor, description, status.getRusTitle());
+    }
+
+    // если переопределяем equals, то необходимо также синхронно переопределить hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || !(o instanceof Task)) {
+            return false;
+        }
+        if (this == o) {
+            return true;
+        }
+        Task another = (Task) o;
+        return this.id.equals(another.id) && this.title.equals(another.title);
+    }
+
+    // если объекты равны по equals, то их hashCode тоже должны быть равны
+    // если объекты НЕ равны по equals, то их hashCode желательно тоже НЕ должны совпадать
+    @Override
+    public int hashCode() {
+        return id.intValue() + title.hashCode();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    public void setExecutor(String executor) {
+        this.executor = executor;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework;
+import com.geekbrains.training.homework.entities.Task;
+public interface TaskInterface {
+    void prepare();
+
+    boolean isTaskExist(Long id, String title);
+
+    Task findTaskById(Long id);
+
+    int addTask(Long id, String title, String owner, String executor, String description);
+
+    int editTask(Task newTask);
+
+    void delTask(Long Id);
+
+    void printList();
+}
+
+
+
+
+package com.geekbrains.training.homework.services;
+import com.geekbrains.training.homework.TaskInterface;
+import com.geekbrains.training.homework.entities.Task;
+import com.geekbrains.training.homework.exceptions.TaskAlreadyExist;
+import com.geekbrains.training.homework.exceptions.TaskNoFound;
+import java.util.*;
+public class TaskRepository implements TaskInterface {
+    private List<Task> tasks = new ArrayList<>();
+
+    TaskRepository() {
+        prepare();
+    }
+
+    List<Task> getTasks() {
+        return tasks;
+    }
+
+    @Override
+    public void prepare() {
+        // [min;max) - генератор в диапазоне
+        final int MIN = 1;
+        final int MAX = 5;
+        for (int i = 0; i < 30; i += 2) {
+            Task.Status status;
+            switch ((int) ((Math.random() * (MAX - MIN)) + MIN)) {
+                case 1:
+                    status = Task.Status.CREATED;
+                    break;
+                case 2:
+                    status = Task.Status.IN_WORK;
+                    break;
+                case 3:
+                    status = Task.Status.CLOSED;
+                    break;
+                default:
+                    status = Task.Status.REJECTED;
+                    break;
+            }
+            tasks.add(new Task((long) i, "Task" + i, "Owner" + i, "Executor" + i, "Create task " + i, status));
+        }
+    }
+
+    @Override
+    public boolean isTaskExist(Long id, String title) {
+        for (Task task : tasks) {
+            if (task.getId().equals(id) && task.getTitle().equals(title)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Task findTaskById(Long id) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя найти запись - нет идентификатора задачи");
+        }
+        for (Task task : tasks) {
+            if (task.getId().equals(id)) {
+                return task;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public int addTask(Long id, String title, String owner, String executor, String description) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя добавить задачу - нет идентификатора");
+        }
+        if (title == null) {
+            throw new TaskNoFound("нельзя добавить задачу - нет названия");
+        }
+        for (Task task : tasks) {
+            if (task.getId().equals(id) && task.getTitle().equals(title)) {
+                throw new TaskAlreadyExist(id, title, tasks.indexOf(task));
+            }
+        }
+        tasks.add(new Task(id, title, owner, executor, description, Task.Status.CREATED));
+        return tasks.size() - 1;
+    }
+
+    @Override
+    public int editTask(Task newTask) {
+        if (newTask == null) {
+            throw new TaskNoFound("нельзя редактировать задачу - объект пустой");
+        }
+        if (newTask.getId() == null) {
+            throw new TaskNoFound("нельзя редактировать задачу - нет идентификатора");
+        }
+        if (newTask.getTitle() == null) {
+            throw new TaskNoFound("нельзя редактировать задачу - нет названия");
+        }
+
+        for (Task task : tasks) {
+            if (task.getId().equals(newTask.getId()) && task.getTitle().equals(newTask.getTitle())) {
+                task = newTask;
+                return tasks.indexOf(task);
+            }
+        }
+        throw new TaskNoFound("нельзя редактировать задачу - нет такой в репозитории [id = " + newTask.getId() + ", title = " + newTask.getTitle() + "]");
+    }
+
+    @Override
+    public void delTask(Long id) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя удалить задачу - нет идентификатора");
+        }
+        for (int i = 0; i < tasks.size(); i++) {
+            if (tasks.get(i).getId().equals(id)) {
+                tasks.remove(i);
+                return; // пока считаем, что не может быть несколько задач с одинаковым id
+            }
+        }
+        throw new TaskNoFound("нельзя удалить задачу - нет такой в репозитории");
+    }
+
+    @Override
+    public void printList() {
+        for (Task task : tasks) {
+            if (task != null) {
+                System.out.println(task);
+            }
+        }
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework.services;
+import com.geekbrains.training.homework.entities.Task;
+import com.geekbrains.training.homework.exceptions.TaskAlreadyExist;
+import com.geekbrains.training.homework.exceptions.TaskNoFound;
+import java.util.List;
+import java.util.stream.Collectors;
+public class TaskService {
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_GREEN = "\u001B[32m";
+
+    private TaskRepository taskRepository;
+
+    public TaskService() {
+        taskRepository = new TaskRepository();
+    }
+
+    public void isTaskExist(Long id, String title) {
+        if (taskRepository.isTaskExist(id, title)) {
+            System.out.println(ANSI_GREEN + "Задача найдена [id = " + id + ", title = " + title + "]" + ANSI_RESET);
+        } else {
+            System.out.println(ANSI_RED + "Задача отсутствует [id = " + id + ", title = " + title + "]!" + ANSI_RESET);
+        }
+    }
+
+    public Task findTaskById(Long id) {
+        Task task = null;
+        try {
+            task = taskRepository.findTaskById(id);
+            if (task == null) {
+                System.out.println(ANSI_RED + "Задача отсутствует [id = " + id + "]!" + ANSI_RESET);
+            } else {
+                System.out.println(ANSI_GREEN + "Задача найдена [id = " + id + "]!" + ANSI_RESET);
+            }
+        } catch (TaskNoFound e) {
+            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+        }
+        return task;
+    }
+
+    public void addTask(Long id, String title, String owner, String executor, String description) {
+        try {
+            int indexListElement = taskRepository.addTask(id, title, owner, executor, description);
+            System.out.println(ANSI_GREEN + "Задача успешно добавлена [id = " + id + ", title = " + title + "] в ячейку = " + indexListElement + ANSI_RESET);
+        } catch (TaskAlreadyExist | TaskNoFound e) {
+            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+        }
+    }
+
+    public void editTask(Task newTask) {
+        try {
+            int indexListElement = taskRepository.editTask(newTask);
+            System.out.println(ANSI_GREEN + "Задача успешно обновлена [id = " + newTask.getId() + ", title = " + newTask.getTitle() + "] в ячейке " + indexListElement + ANSI_RESET);
+        } catch (TaskNoFound e) {
+            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+        }
+    }
+
+    public void delTask(Long id) throws TaskNoFound {
+        try {
+            taskRepository.delTask(id);
+            System.out.println(ANSI_GREEN + "Задача успешно удалена [id = " + id + "]" + ANSI_RESET);
+        } catch (TaskNoFound e) {
+            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+        }
+    }
+
+    public void printList() {
+        taskRepository.printList();
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    // STREAM API
+    /////////////////////////////////////////////////////////////////////////////////
+    // получение списка задач по выбранному статусу
+    public void streamPrintTaskListByStatus(Task.Status status) {
+        if (status == null) {
+            System.out.println(ANSI_RED + "Передан пустой статус!" + ANSI_RESET);
+            return;
+        }
+
+        List<Task> tasksByStatus = taskRepository.getTasks().stream()
+                .filter(task -> task.getStatus() == status)
+                .collect(Collectors.toList());
+        if (tasksByStatus.size() == 0) {
+            System.out.println(ANSI_RED + "Нет задач со статусом " + status.getRusTitle() + "!" + ANSI_RESET);
+            return;
+        }
+        tasksByStatus.forEach(System.out::println);
+    }
+
+    // проверка наличия задачи с указанным ID
+    public void streamPrintTaskListByStatus(Long id) {
+        //if (taskRepository.getTasks().stream().filter((p) -> (p.getId().equals(id))).count() == 0) {
+        if (taskRepository.getTasks().stream().noneMatch(task -> task.getId().equals(id))) {
+            System.out.println(ANSI_RED + "Нет задач с id = " + id + ANSI_RESET);
+        } else {
+            System.out.println(ANSI_GREEN + "Есть задача с id = " + id + ANSI_RESET);
+        }
+/*
+        // Вариант 2 - если нужно получить саму задачу
+        List<Task> taskById = taskRepository.getTasks().stream()
+                .filter(task -> task.getId().equals(id))
+                .collect(Collectors.toList());
+        if (taskById.size() == 0) {
+            System.out.println(ANSI_RED + "Нет задач с id = " + id + ANSI_RESET);
+        } else {
+            System.out.println(ANSI_GREEN + "Есть задача с id = " + id + ":" + ANSI_RESET);
+            taskById.forEach(System.out::println);
+        }
+*/
+    }
+
+    // получение списка задач в отсортированном по статусу виде
+    public void streamPrintTaskListSortByStatus() {
+        List<Task> tasksByStatus = taskRepository.getTasks().stream()
+                .sorted((o1, o2) -> o1.getStatus().compareTo(o2.getStatus()))
+                .collect(Collectors.toList());
+        if (tasksByStatus.size() == 0) {
+            System.out.println(ANSI_RED + "Список получился пустым!" + ANSI_RESET);
+            return;
+        }
+        tasksByStatus.forEach(System.out::println);
+    }
+
+    // подсчёт количества задач по определенному статусу
+    public long streamCountTasksByStatus(Task.Status status) {
+        return taskRepository.getTasks().stream().filter((p) -> (p.getStatus() == status)).count();
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework;
+import com.geekbrains.training.homework.entities.Task;
+import com.geekbrains.training.homework.services.TaskService;
+public class MainApp {
+    public static void main(String[] args) {
+        final String ANSI_BLUE = "\u001B[34m";
+        final String ANSI_RESET = "\u001B[0m";
+/*
+        System.out.println("+-------------------------------------------+");
+        System.out.println("| Проверка создания задачи через класс Task |");
+        System.out.println("+-------------------------------------------+");
+        Task task = new Task(1L, "Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CREATED);
+        System.out.println(task);
+        System.out.println(task.getId());
+        System.out.println(task.getTitle());
+        System.out.println();
+
+        System.out.println("+------------------------------------+");
+        System.out.println("| Проверка работы equals класса Task |");
+        System.out.println("+------------------------------------+");
+        Task another1 = new Task(1L, "Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CREATED);
+        Task another2 = new Task(2L, "Task_2", "Owner_2", "Executor_2", "Create task 2", Task.Status.CREATED);
+        System.out.println(task.equals(task)); // сверяем сам с собой
+        System.out.println(task.equals(another1));
+        System.out.println(task.equals(another2));
+        System.out.println(task.equals(null)); // если объект не существует
+        System.out.println();
+
+        // создание репозитория
+        TaskService taskService = new TaskService();
+        taskService.printList();
+        System.out.println("+-----------------------------+");
+        System.out.println("| Проверка поиска isTaskExist |");
+        System.out.println("+-----------------------------+");
+        taskService.isTaskExist(0L, "Task0");
+        taskService.isTaskExist(1L, "Task1");
+        taskService.isTaskExist(null, "Task2");
+        taskService.isTaskExist(2L, null);
+        System.out.println();
+
+        System.out.println("+-----------------------------+");
+        System.out.println("| Проверка поиска findTaskById |");
+        System.out.println("+-----------------------------+");
+        taskService.findTaskById(null);
+        taskService.findTaskById(888L);
+        taskService.findTaskById(0L);
+        System.out.println();
+
+        System.out.println("+---------------------+");
+        System.out.println("| Проверка добавления |");
+        System.out.println("+---------------------+");
+        taskService.addTask(1L, "Task1", "owner1", "executor1", "Create task 1");
+        System.out.println("Повторное добавление такой же записи:");
+        taskService.addTask(1L, "Task1", "owner1", "executor1", "Create task 1");
+        System.out.println("Добавление id = NULL:");
+        taskService.addTask(null, "Task1", "owner1", "executor1", "Create task 1");
+        System.out.println("Добавление title = NULL:");
+        taskService.addTask(10L, null, "owner10", "executor10", "Create task 10");
+        taskService.printList();
+        System.out.println();
+
+        System.out.println("+---------------------+");
+        System.out.println("| Проверка обновления |");
+        System.out.println("+---------------------+");
+        Task newTask = null;
+        taskService.editTask(newTask);
+        newTask = taskService.findTaskById(1L);
+        newTask.setOwner("NewOwner1");
+        newTask.setExecutor("NewExecutor1");
+        newTask.setDescription("NewDescription1");
+        newTask.setStatus(Task.Status.REJECTED);
+        taskService.editTask(newTask);
+        taskService.editTask(new Task(888L, "Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CLOSED));
+        taskService.printList();
+        System.out.println();
+
+        System.out.println("+-------------------+");
+        System.out.println("| Проверка удаления |");
+        System.out.println("+-------------------+");
+        taskService.delTask(null);
+        taskService.delTask(1L);
+        taskService.delTask(1L);
+        taskService.printList();
+        System.out.println();
+
+        System.out.println("+-------------------------------------+");
+        System.out.println("| Проверка добавления с переполнением |");
+        System.out.println("+-------------------------------------+");
+        for (int i = 0; i < 12; i++) {
+            taskService.addTask((long) i, "Task" + i, "NewOwner" + i, "NewExecutor" + i, "Create new task " + i);
+        }
+        taskService.printList();
+        System.out.println();
+ */
+
+        System.out.println("+-------------------------------------+");
+        System.out.println("|       S T R E A M     A P I         |");
+        System.out.println("+-------------------------------------+");
+        TaskService taskService = new TaskService();
+        System.out.println(ANSI_BLUE + "ИСХОДНЫЙ СПИСОК ЗАДАЧ:" + ANSI_RESET);
+        taskService.printList();
+
+        Task.Status status = Task.Status.CREATED;
+        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(status);
+        status = Task.Status.IN_WORK;
+        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(status);
+        status = Task.Status.CLOSED;
+        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(status);
+        status = Task.Status.REJECTED;
+        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(status);
+        status = Task.Status.SUSPENDED;
+        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(status);
+        status = null;
+        System.out.println(ANSI_BLUE + "ЗАДАЧИ С ПУСТЫМ СТАТУСОМ:" + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(status);
+        System.out.println();
+
+        System.out.println(ANSI_BLUE + "ПРОВЕРКА ПОИСКА ЗАДАЧ ПО ID:" + ANSI_RESET);
+        taskService.streamPrintTaskListByStatus(1L);
+        taskService.streamPrintTaskListByStatus(2L);
+        taskService.streamPrintTaskListByStatus(3L);
+        taskService.streamPrintTaskListByStatus(4L);
+        System.out.println();
+
+        System.out.println(ANSI_BLUE + "СПИСОК ЗАДАЧ, ОТСОРТИРОВАННЫЙ ПО СТАТУСУ:" + ANSI_RESET);
+        taskService.streamPrintTaskListSortByStatus();
+        System.out.println();
+
+        System.out.println(ANSI_BLUE + "КОЛИЧЕСТВО ЗАДАЧ ПО ЗАДАННОМУ СТАТУСУ:" + ANSI_RESET);
+        status = Task.Status.CREATED;
+        System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
+        status = Task.Status.IN_WORK;
+        System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
+        status = Task.Status.CLOSED;
+        System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
+        status = Task.Status.REJECTED;
+        System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
+        status = Task.Status.SUSPENDED;
+        System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
+    }
+}
