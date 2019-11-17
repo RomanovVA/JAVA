@@ -2,6 +2,98 @@
 //  П Р О Е К Т
 ///////////////////////////////////////////////////////////////////////////////////////
 
+package com.geekbrains.training.homework.fonts;
+
+public class Fonts {
+    public enum Color {
+        RESET("\033[0m"),
+
+        // Regular Colors
+        BLACK("\033[0;30m"),
+        RED("\033[0;31m"),
+        GREEN("\033[0;32m"),
+        YELLOW("\033[0;33m"),
+        BLUE("\033[0;34m"),
+        MAGENTA("\033[0;35m"),
+        CYAN("\033[0;36m"),
+        WHITE("\033[0;37m"),
+
+        // Bold
+        BLACK_BOLD("\033[1;30m"),
+        RED_BOLD("\033[1;31m"),
+        GREEN_BOLD("\033[1;32m"),
+        YELLOW_BOLD("\033[1;33m"),
+        BLUE_BOLD("\033[1;34m"),
+        MAGENTA_BOLD("\033[1;35m"),
+        CYAN_BOLD("\033[1;36m"),
+        WHITE_BOLD("\033[1;37m"),
+
+        // Underline
+        BLACK_UNDERLINED("\033[4;30m"),
+        RED_UNDERLINED("\033[4;31m"),
+        GREEN_UNDERLINED("\033[4;32m"),
+        YELLOW_UNDERLINED("\033[4;33m"),
+        BLUE_UNDERLINED("\033[4;34m"),
+        MAGENTA_UNDERLINED("\033[4;35m"),
+        CYAN_UNDERLINED("\033[4;36m"),
+        WHITE_UNDERLINED("\033[4;37m"),
+
+        // Background
+        BLACK_BACKGROUND("\033[40m"),
+        RED_BACKGROUND("\033[41m"),
+        GREEN_BACKGROUND("\033[42m"),
+        YELLOW_BACKGROUND("\033[43m"),
+        BLUE_BACKGROUND("\033[44m"),
+        MAGENTA_BACKGROUND("\033[45m"),
+        CYAN_BACKGROUND("\033[46m"),
+        WHITE_BACKGROUND("\033[47m"),
+
+        // High Intensity
+        BLACK_BRIGHT("\033[0;90m"),
+        RED_BRIGHT("\033[0;91m"),
+        GREEN_BRIGHT("\033[0;92m"),
+        YELLOW_BRIGHT("\033[0;93m"),
+        BLUE_BRIGHT("\033[0;94m"),
+        MAGENTA_BRIGHT("\033[0;95m"),
+        CYAN_BRIGHT("\033[0;96m"),
+        WHITE_BRIGHT("\033[0;97m"),
+
+        // Bold High Intensity
+        BLACK_BOLD_BRIGHT("\033[1;90m"),
+        RED_BOLD_BRIGHT("\033[1;91m"),
+        GREEN_BOLD_BRIGHT("\033[1;92m"),
+        YELLOW_BOLD_BRIGHT("\033[1;93m"),
+        BLUE_BOLD_BRIGHT("\033[1;94m"),
+        MAGENTA_BOLD_BRIGHT("\033[1;95m"),
+        CYAN_BOLD_BRIGHT("\033[1;96m"),
+        WHITE_BOLD_BRIGHT("\033[1;97m"),
+
+        // High Intensity backgrounds
+        BLACK_BACKGROUND_BRIGHT("\033[0;100m"),
+        RED_BACKGROUND_BRIGHT("\033[0;101m"),
+        GREEN_BACKGROUND_BRIGHT("\033[0;102m"),
+        YELLOW_BACKGROUND_BRIGHT("\033[0;103m"),
+        BLUE_BACKGROUND_BRIGHT("\033[0;104m"),
+        MAGENTA_BACKGROUND_BRIGHT("\033[0;105m"),
+        CYAN_BACKGROUND_BRIGHT("\033[0;106m"),
+        WHITE_BACKGROUND_BRIGHT("\033[0;107m");
+
+        private final String code;
+
+        Color(String code) {
+            this.code = code;
+        }
+
+        @Override
+        public String toString() {
+            return code;
+        }
+    }
+}
+
+
+
+
 package com.geekbrains.training.homework.exceptions;
 public class TaskAlreadyExist extends RuntimeException {
     private int indexArray;
@@ -111,6 +203,18 @@ public class Task {
         return status;
     }
 
+    public String getOwner() {
+        return owner;
+    }
+
+    public String getExecutor() {
+        return executor;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -148,7 +252,7 @@ public interface TaskInterface {
 
     Task findTaskById(Long id);
 
-    int addTask(Long id, String title, String owner, String executor, String description);
+    int addTask(Long id, String title, String owner, String executor, String description, Task.Status status);
 
     int editTask(Task newTask);
 
@@ -180,25 +284,10 @@ public class TaskRepository implements TaskInterface {
     @Override
     public void prepare() {
         // [min;max) - генератор в диапазоне
-        final int MIN = 1;
-        final int MAX = 5;
+        final int MIN = 0;
+        final int MAX = 4;
         for (int i = 0; i < 30; i += 2) {
-            Task.Status status;
-            switch ((int) ((Math.random() * (MAX - MIN)) + MIN)) {
-                case 1:
-                    status = Task.Status.CREATED;
-                    break;
-                case 2:
-                    status = Task.Status.IN_WORK;
-                    break;
-                case 3:
-                    status = Task.Status.CLOSED;
-                    break;
-                default:
-                    status = Task.Status.REJECTED;
-                    break;
-            }
-            tasks.add(new Task((long) i, "Task" + i, "Owner" + i, "Executor" + i, "Create task " + i, status));
+            tasks.add(new Task((long) i, "Task" + i, "Owner" + i, "Executor" + i, "Create task " + i, Task.Status.values()[(int) ((Math.random() * (MAX - MIN)) + MIN)]));
         }
     }
 
@@ -226,7 +315,7 @@ public class TaskRepository implements TaskInterface {
     }
 
     @Override
-    public int addTask(Long id, String title, String owner, String executor, String description) {
+    public int addTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
         if (id == null) {
             throw new TaskNoFound("нельзя добавить задачу - нет идентификатора");
         }
@@ -238,7 +327,8 @@ public class TaskRepository implements TaskInterface {
                 throw new TaskAlreadyExist(id, title, tasks.indexOf(task));
             }
         }
-        tasks.add(new Task(id, title, owner, executor, description, Task.Status.CREATED));
+
+        tasks.add(new Task(id, title, owner, executor, description, status == null ? Task.Status.CREATED : status));
         return tasks.size() - 1;
     }
 
@@ -279,9 +369,13 @@ public class TaskRepository implements TaskInterface {
 
     @Override
     public void printList() {
-        for (Task task : tasks) {
-            if (task != null) {
-                System.out.println(task);
+        if (tasks.size() == 0) {
+            System.out.println("Репозитарий пустой!");
+        } else {
+            for (Task task : tasks) {
+                if (task != null) {
+                    System.out.println(task);
+                }
             }
         }
     }
@@ -294,13 +388,17 @@ package com.geekbrains.training.homework.services;
 import com.geekbrains.training.homework.entities.Task;
 import com.geekbrains.training.homework.exceptions.TaskAlreadyExist;
 import com.geekbrains.training.homework.exceptions.TaskNoFound;
+import com.geekbrains.training.homework.fonts.Fonts;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
+import java.util.StringTokenizer;
 import java.util.stream.Collectors;
-public class TaskService {
-    private static final String ANSI_RESET = "\u001B[0m";
-    private static final String ANSI_RED = "\u001B[31m";
-    private static final String ANSI_GREEN = "\u001B[32m";
 
+public class TaskService {
+    private String delimiter = ";";
     private TaskRepository taskRepository;
 
     public TaskService() {
@@ -309,9 +407,9 @@ public class TaskService {
 
     public void isTaskExist(Long id, String title) {
         if (taskRepository.isTaskExist(id, title)) {
-            System.out.println(ANSI_GREEN + "Задача найдена [id = " + id + ", title = " + title + "]" + ANSI_RESET);
+            System.out.println(Fonts.Color.GREEN + "Задача найдена [id = " + id + ", title = " + title + "]" + Fonts.Color.RESET);
         } else {
-            System.out.println(ANSI_RED + "Задача отсутствует [id = " + id + ", title = " + title + "]!" + ANSI_RESET);
+            System.out.println(Fonts.Color.RED + "Задача отсутствует [id = " + id + ", title = " + title + "]!" + Fonts.Color.RESET);
         }
     }
 
@@ -320,40 +418,40 @@ public class TaskService {
         try {
             task = taskRepository.findTaskById(id);
             if (task == null) {
-                System.out.println(ANSI_RED + "Задача отсутствует [id = " + id + "]!" + ANSI_RESET);
+                System.out.println(Fonts.Color.RED + "Задача отсутствует [id = " + id + "]!" + Fonts.Color.RESET);
             } else {
-                System.out.println(ANSI_GREEN + "Задача найдена [id = " + id + "]!" + ANSI_RESET);
+                System.out.println(Fonts.Color.GREEN + "Задача найдена [id = " + id + "]!" + Fonts.Color.RESET);
             }
         } catch (TaskNoFound e) {
-            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println(Fonts.Color.RED + e.getMessage() + Fonts.Color.RESET);
         }
         return task;
     }
 
-    public void addTask(Long id, String title, String owner, String executor, String description) {
+    public void addTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
         try {
-            int indexListElement = taskRepository.addTask(id, title, owner, executor, description);
-            System.out.println(ANSI_GREEN + "Задача успешно добавлена [id = " + id + ", title = " + title + "] в ячейку = " + indexListElement + ANSI_RESET);
+            int indexListElement = taskRepository.addTask(id, title, owner, executor, description, status == null ? Task.Status.CREATED : status);
+            System.out.println(Fonts.Color.GREEN + "Задача успешно добавлена [id = " + id + ", title = " + title + "] в ячейку = " + indexListElement + Fonts.Color.RESET);
         } catch (TaskAlreadyExist | TaskNoFound e) {
-            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println(Fonts.Color.RED + e.getMessage() + Fonts.Color.RESET);
         }
     }
 
     public void editTask(Task newTask) {
         try {
             int indexListElement = taskRepository.editTask(newTask);
-            System.out.println(ANSI_GREEN + "Задача успешно обновлена [id = " + newTask.getId() + ", title = " + newTask.getTitle() + "] в ячейке " + indexListElement + ANSI_RESET);
+            System.out.println(Fonts.Color.GREEN + "Задача успешно обновлена [id = " + newTask.getId() + ", title = " + newTask.getTitle() + "] в ячейке " + indexListElement + Fonts.Color.RESET);
         } catch (TaskNoFound e) {
-            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println(Fonts.Color.RED + e.getMessage() + Fonts.Color.RESET);
         }
     }
 
     public void delTask(Long id) throws TaskNoFound {
         try {
             taskRepository.delTask(id);
-            System.out.println(ANSI_GREEN + "Задача успешно удалена [id = " + id + "]" + ANSI_RESET);
+            System.out.println(Fonts.Color.GREEN + "Задача успешно удалена [id = " + id + "]" + Fonts.Color.RESET);
         } catch (TaskNoFound e) {
-            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
+            System.out.println(Fonts.Color.RED + e.getMessage() + Fonts.Color.RESET);
         }
     }
 
@@ -365,32 +463,20 @@ public class TaskService {
     // STREAM API
     /////////////////////////////////////////////////////////////////////////////////
     // получение списка задач по выбранному статусу
-    public void streamPrintTaskListByStatus(Task.Status status) {
-        if (status == null) {
-            System.out.println(ANSI_RED + "Передан пустой статус!" + ANSI_RESET);
-            return;
-        }
-
-        List<Task> tasksByStatus = taskRepository.getTasks().stream()
+    public List<Task> streamTaskListByStatus(Task.Status status) {
+        return taskRepository.getTasks().stream()
                 .filter(task -> task.getStatus() == status)
                 .collect(Collectors.toList());
-        if (tasksByStatus.size() == 0) {
-            System.out.println(ANSI_RED + "Нет задач со статусом " + status.getRusTitle() + "!" + ANSI_RESET);
-            return;
-        }
-        tasksByStatus.forEach(System.out::println);
     }
 
     // проверка наличия задачи с указанным ID
-    public void streamPrintTaskListByStatus(Long id) {
-        //if (taskRepository.getTasks().stream().filter((p) -> (p.getId().equals(id))).count() == 0) {
-        if (taskRepository.getTasks().stream().noneMatch(task -> task.getId().equals(id))) {
-            System.out.println(ANSI_RED + "Нет задач с id = " + id + ANSI_RESET);
-        } else {
-            System.out.println(ANSI_GREEN + "Есть задача с id = " + id + ANSI_RESET);
+    public boolean streamPrintTaskListByStatus(Long id) {
+        if (id == null) {
+            return false;
         }
+        return taskRepository.getTasks().stream().anyMatch(task -> task.getId().equals(id));
 /*
-        // Вариант 2 - если нужно получить саму задачу
+        // Вариант 2 - если нужно получить саму задачу (вдруг пригодится потом...)
         List<Task> taskById = taskRepository.getTasks().stream()
                 .filter(task -> task.getId().equals(id))
                 .collect(Collectors.toList());
@@ -404,20 +490,64 @@ public class TaskService {
     }
 
     // получение списка задач в отсортированном по статусу виде
-    public void streamPrintTaskListSortByStatus() {
-        List<Task> tasksByStatus = taskRepository.getTasks().stream()
+    public List<Task> streamPrintTaskListSortByStatus() {
+        return taskRepository.getTasks().stream()
                 .sorted((o1, o2) -> o1.getStatus().compareTo(o2.getStatus()))
                 .collect(Collectors.toList());
-        if (tasksByStatus.size() == 0) {
-            System.out.println(ANSI_RED + "Список получился пустым!" + ANSI_RESET);
-            return;
-        }
-        tasksByStatus.forEach(System.out::println);
     }
 
     // подсчёт количества задач по определенному статусу
     public long streamCountTasksByStatus(Task.Status status) {
         return taskRepository.getTasks().stream().filter((p) -> (p.getStatus() == status)).count();
+    }
+
+
+    /////////////////////////////////////////////////////////////////////////////////
+    //  I / O
+    /////////////////////////////////////////////////////////////////////////////////
+    // записать задачи из репозитория в файл
+    public int saveRepoToFile() {
+        int countRows = 0;
+        try {
+            FileWriter writer = new FileWriter("Repository.csv");
+            for (Task task : taskRepository.getTasks()) {
+                writer.write(task.getId() + delimiter + task.getTitle() + delimiter + task.getOwner() + delimiter + task.getExecutor() + delimiter + task.getDescription() + delimiter + task.getStatus());
+                writer.write(System.getProperty("line.separator"));
+                countRows++;
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return countRows;
+    }
+
+    // прочитать задачи из файла и загрузить их в репозиторий
+    public int readRepoFromFile() {
+        int countRows = 0;
+        try {
+            FileReader fr = new FileReader("Repository.csv");
+            BufferedReader reader = new BufferedReader(fr);
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                // читаем всю строку с разделителями
+                StringTokenizer stk = new StringTokenizer(line, delimiter);
+                // парсим
+                Long id = Long.valueOf(stk.nextToken());
+                String title = stk.nextToken();
+                String owner = stk.nextToken();
+                String executor = stk.nextToken();
+                String description = stk.nextToken();
+                Task.Status status = Task.Status.valueOf(stk.nextToken());
+
+                addTask(id, title, owner, executor, description, status);
+                countRows++;
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return countRows;
     }
 }
 
@@ -425,12 +555,10 @@ public class TaskService {
 
 
 package com.geekbrains.training.homework;
-import com.geekbrains.training.homework.entities.Task;
+import com.geekbrains.training.homework.fonts.Fonts;
 import com.geekbrains.training.homework.services.TaskService;
 public class MainApp {
     public static void main(String[] args) {
-        final String ANSI_BLUE = "\u001B[34m";
-        final String ANSI_RESET = "\u001B[0m";
 /*
         System.out.println("+-------------------------------------------+");
         System.out.println("| Проверка создания задачи через класс Task |");
@@ -519,45 +647,59 @@ public class MainApp {
         System.out.println();
  */
 
+/*
         System.out.println("+-------------------------------------+");
         System.out.println("|       S T R E A M     A P I         |");
         System.out.println("+-------------------------------------+");
         TaskService taskService = new TaskService();
-        System.out.println(ANSI_BLUE + "ИСХОДНЫЙ СПИСОК ЗАДАЧ:" + ANSI_RESET);
+        System.out.println(Color.ColorFonts.BLUE + "ИСХОДНЫЙ СПИСОК ЗАДАЧ:" + Color.ColorFonts.RESET);
         taskService.printList();
 
         Task.Status status = Task.Status.CREATED;
-        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(status);
+        System.out.println(Color.ColorFonts.BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + Color.ColorFonts.RESET);
+        taskService.streamTaskListByStatus(status).forEach(System.out::println);
         status = Task.Status.IN_WORK;
-        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(status);
+        System.out.println(Color.ColorFonts.BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + Color.ColorFonts.RESET);
+        taskService.streamTaskListByStatus(status).forEach(System.out::println);
         status = Task.Status.CLOSED;
-        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(status);
+        System.out.println(Color.ColorFonts.BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + Color.ColorFonts.RESET);
+        taskService.streamTaskListByStatus(status).forEach(System.out::println);
         status = Task.Status.REJECTED;
-        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(status);
+        System.out.println(Color.ColorFonts.BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + Color.ColorFonts.RESET);
+        taskService.streamTaskListByStatus(status).forEach(System.out::println);
         status = Task.Status.SUSPENDED;
-        System.out.println(ANSI_BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(status);
+        System.out.println(Color.ColorFonts.BLUE + "ЗАДАЧИ СО СТАТУСОМ: " + status.getRusTitle() + Color.ColorFonts.RESET);
+        taskService.streamTaskListByStatus(status).forEach(System.out::println);
         status = null;
-        System.out.println(ANSI_BLUE + "ЗАДАЧИ С ПУСТЫМ СТАТУСОМ:" + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(status);
+        System.out.println(Color.ColorFonts.BLUE + "ЗАДАЧИ С ПУСТЫМ СТАТУСОМ:" + Color.ColorFonts.RESET);
+        taskService.streamTaskListByStatus(status).forEach(System.out::println);
         System.out.println();
 
-        System.out.println(ANSI_BLUE + "ПРОВЕРКА ПОИСКА ЗАДАЧ ПО ID:" + ANSI_RESET);
-        taskService.streamPrintTaskListByStatus(1L);
-        taskService.streamPrintTaskListByStatus(2L);
-        taskService.streamPrintTaskListByStatus(3L);
-        taskService.streamPrintTaskListByStatus(4L);
+        System.out.println(Color.ColorFonts.BLUE + "ПРОВЕРКА ПОИСКА ЗАДАЧ ПО ID:" + Color.ColorFonts.RESET);
+        Long id = 1L;
+        if (taskService.streamPrintTaskListByStatus(id)) {
+            System.out.println(Color.ColorFonts.GREEN + "Есть задача с id = " + id + Color.ColorFonts.RESET);
+        } else {
+            System.out.println(Color.ColorFonts.RED + "Нет задач с id = " + id + Color.ColorFonts.RESET);
+        }
+        id = 2L;
+        if (taskService.streamPrintTaskListByStatus(id)) {
+            System.out.println(Color.ColorFonts.GREEN + "Есть задача с id = " + id + Color.ColorFonts.RESET);
+        } else {
+            System.out.println(Color.ColorFonts.RED + "Нет задач с id = " + id + Color.ColorFonts.RESET);
+        }
         System.out.println();
 
-        System.out.println(ANSI_BLUE + "СПИСОК ЗАДАЧ, ОТСОРТИРОВАННЫЙ ПО СТАТУСУ:" + ANSI_RESET);
-        taskService.streamPrintTaskListSortByStatus();
+        System.out.println(Color.ColorFonts.BLUE + "СПИСОК ЗАДАЧ, ОТСОРТИРОВАННЫЙ ПО СТАТУСУ:" + Color.ColorFonts.RESET);
+        List<Task> tasksByStatus = taskService.streamPrintTaskListSortByStatus();
+        if (tasksByStatus.size() == 0) {
+            System.out.println(Color.ColorFonts.RED + "Список получился пустым!" + Color.ColorFonts.RESET);
+        } else {
+            tasksByStatus.forEach(System.out::println);
+        }
         System.out.println();
 
-        System.out.println(ANSI_BLUE + "КОЛИЧЕСТВО ЗАДАЧ ПО ЗАДАННОМУ СТАТУСУ:" + ANSI_RESET);
+        System.out.println(Color.ColorFonts.BLUE + "КОЛИЧЕСТВО ЗАДАЧ ПО ЗАДАННОМУ СТАТУСУ:" + Color.ColorFonts.RESET);
         status = Task.Status.CREATED;
         System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
         status = Task.Status.IN_WORK;
@@ -568,5 +710,32 @@ public class MainApp {
         System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
         status = Task.Status.SUSPENDED;
         System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
+        System.out.println();
+*/
+
+        System.out.println("+-------------------------------------+");
+        System.out.println("|                 I / O               |");
+        System.out.println("+-------------------------------------+");
+        TaskService taskService = new TaskService();
+        System.out.println(Fonts.Color.BLUE + "Список задач:" + Fonts.Color.RESET);
+        taskService.printList();
+
+        System.out.println("Записано в файл " + taskService.saveRepoToFile() + " строк.");
+        System.out.println();
+
+        System.out.println("Загружено из файла " + taskService.readRepoFromFile() + " строк."); // ошибки, т.к. такие строки уже есть
+        System.out.println();
+
+        // почистим репозиторий
+        for (int i = 0; i < 30; i += 2) {
+            taskService.delTask((long) i);
+        }
+        System.out.println();
+
+        System.out.println(Fonts.Color.BLUE + "Список задач:" + Fonts.Color.RESET);
+        taskService.printList();
+        System.out.println();
+
+        System.out.println("Считано из файла " + taskService.readRepoFromFile() + " строк.");
     }
 }
