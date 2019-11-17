@@ -1,0 +1,135 @@
+package com.geekbrains.training.homework2;
+
+public class Task {
+    private int id;
+    private String name;
+    private String owner;
+    private String executor;
+    private String description;
+    private String status;
+
+    public Task(int id, String name, String owner, String executor, String description, String status) {
+        this.id = id;
+        this.name = name;
+        this.owner = owner;
+        this.executor = executor;
+        this.description = description;
+        this.status = status;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void print() {
+        System.out.println(id + "; " + name + "; " + owner + "; " + executor + "; " + description + "; " + status);
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework2;
+
+public class TaskTracker {
+    private Task[] tasks;
+
+    public TaskTracker() {
+        this.tasks = new Task[10];
+    }
+
+    public void addNewTask(int id, String name, String owner, String executor, String description) {
+        int indexEmptyCell = -1;
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId() == id) {
+                System.out.println("Уже есть задача с идентификатором id=" + id + ", воспользуйтесь операцией обновления задачи!");
+                return;
+            }
+            if (indexEmptyCell == -1 && tasks[i] == null) {
+                indexEmptyCell = i;
+            }
+        }
+        if (indexEmptyCell < 0) {
+            System.out.println("Список задач заполнен!");
+        } else {
+            tasks[indexEmptyCell] = new Task(id, name, owner, executor, description, "Создана");
+            System.out.print("Задача успешно добавлена: ");
+            tasks[indexEmptyCell].print();
+        }
+    }
+
+    public void print() {
+        System.out.println("----------------");
+        System.out.println("Список задач:");
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null) {
+                tasks[i].print();
+            }
+        }
+        System.out.println("----------------");
+    }
+
+    public void delTask(int id) {
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && tasks[i].getId() == id) {
+                tasks[i] = null;
+                System.out.println("Задача успешно удалена с id=" + id);
+                return; // считаем, что не может быть несколько задач с одинаковым id
+            }
+        }
+        System.out.println("Не удалось найти задачу с id=" + id);
+    }
+
+    // считаем, что может быть несколько задач с одинаковым name и разными id
+    public void delTask(String name) {
+        int taskDeleted = 0;
+        for (int i = 0; i < this.tasks.length; i++) {
+            if (tasks[i] != null && name.equals(tasks[i].getName())) {
+                tasks[i] = null;
+                taskDeleted++;
+            }
+        }
+        if (taskDeleted == 0) {
+            System.out.println("Не удалось найти задачи с name=" + name);
+        } else {
+            System.out.println("Успешно удалено " + taskDeleted + " задач с name=" + name);
+        }
+    }
+}
+
+
+
+
+package com.geekbrains.training.homework2;
+
+public class MainApp {
+    public static void main(String[] args) {
+        // проверка работы класса
+        Task task = new Task(1, "Задача 1", "Иванов", "Петров", "Решение задачи № 1", "Создана");
+        task.print();
+
+        // проверка добавления задачи
+        TaskTracker tasks = new TaskTracker();
+        tasks.print();
+        tasks.addNewTask(1, "Задача 1", "User_1", "Executor_1", "Решение задачи № 1");
+        tasks.print();
+
+        // проверка переполнения списка задач
+        for (int i = 0; i < 15; i++) {
+            tasks.addNewTask(i, "Задача " + i, "User_" + i, "Executor_" + i, "Решение задачи № " + i);
+        }
+        tasks.print();
+
+        // проверка операций удаления
+        tasks.delTask(5);
+        tasks.delTask("Задача 6");
+        tasks.print();
+        tasks.delTask(5);
+        tasks.delTask("Задача 6");
+        tasks.print();
+    }
+}
