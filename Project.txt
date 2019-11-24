@@ -1,8 +1,72 @@
 ﻿///////////////////////////////////////////////////////////////////////////////////////
-//  П Р О Е К Т
-//  НЕ ПРОВЕРЯТЬ!!!  ЭТО СТАРЫЙ РАБОТАЮЩИЙ ВАРИАНТ С JDBC
-//  ПО HIBERNATE НИКАК НЕ МОГУ ПОДКЛЮЧИТЬСЯ К БД SQLite
+//  П Р О Е К Т   (HIBERNATE + H2)   -   ГОТОВ, МОЖНО ПРОВЕРЯТЬ
 ///////////////////////////////////////////////////////////////////////////////////////
+
+POM.XML:
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.geekbrains.training</groupId>
+    <artifactId>homework</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.hibernate/hibernate-core -->
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>5.4.4.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>1.4.200</version>
+        </dependency>
+    </dependencies>
+</project>
+
+
+
+
+RESOURCE:  HIBERNATE.CFG.XML
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+    <session-factory>
+        <property name="connection.driver_class">org.h2.Driver</property>
+        <property name="connection.url">jdbc:h2:mem:mydatabase;MODE=PostgreSQL</property>
+        <property name="connection.username">sa</property>
+        <property name="connection.password"></property>
+        <property name="connection.pool_size">8</property>
+        <property name="dialect">org.hibernate.dialect.H2Dialect</property>
+        <property name="show_sql">false</property>
+        <property name="current_session_context_class">thread</property>
+
+        <property name="hibernate.hbm2ddl.auto">create</property>
+
+        <mapping class="com.geekbrains.training.homework.entities.Task"/>
+    </session-factory>
+</hibernate-configuration>
+
+
+
+
+RESOURCE:  IMPORT.SQL
+DROP TABLE tasks IF EXISTS;
+CREATE TABLE IF NOT EXISTS tasks (id BIGSERIAL, title VARCHAR(255), owner VARCHAR(255), executor VARCHAR(255), description VARCHAR(255), status VARCHAR(255), PRIMARY KEY (id));
+
+
+
 
 package com.geekbrains.training.homework.fonts;
 public class Fonts {
@@ -95,7 +159,6 @@ public class Fonts {
 
 
 
-
 package com.geekbrains.training.homework.exceptions;
 public class TaskAlreadyExist extends RuntimeException {
     private Long id;
@@ -130,7 +193,11 @@ public class TaskNoFound extends RuntimeException {
 
 
 package com.geekbrains.training.homework.entities;
-public class Task {
+import javax.persistence.*;
+import java.io.Serializable;
+@Entity
+@Table(name="tasks")
+public class Task implements Serializable { // для web-уровня
     public enum Status {
         CREATED("Создана"), IN_WORK("В работе"), CLOSED("Закрыта"), REJECTED("Отклонена"), SUSPENDED("Приостановлена");;
 
@@ -145,26 +212,27 @@ public class Task {
         }
     }
 
-    private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // за генерацию id отвечает БД
+    @Column (name = "id" )
+    private Long id; // при создании = null, т.к. через конструктор не заполняем (поэтому тип - обёртка Long, а не примитив)
+    @Column (name = "title" )
     private String title;
+    @Column (name = "owner" )
     private String owner;
+    @Column (name = "executor" )
     private String executor;
+    @Column (name = "description" )
     private String description;
+    @Column (name = "status" )
     private Status status;
 
-    // конструктор класса
-    public Task(Long id, String title, String owner, String executor, String description, Status status) {
-        this.id = id;
-        this.title = title;
-        this.owner = owner;
-        this.executor = executor;
-        this.description = description;
-        this.status = status;
-    }
+    // дефолтный конструктор - для работы с hibernate
+    public Task() {}
 
     @Override
     public String toString() {
-        return String.format("Задача [id = %d, title = %s, owher = %s, executor = %s, description = %s, status = %s]", id, title, owner, executor, description, status.getRusTitle());
+        return String.format("Задача [id = %d, title = %s, owher = %s, executor = %s, description = %s, status = %s (%s)]", id, title, owner, executor, description, status, status.rusTitle);
     }
 
     // если переопределяем equals, то необходимо также синхронно переопределить hashCode
@@ -211,10 +279,6 @@ public class Task {
         return description;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
     public void setTitle(String title) {
         this.title = title;
     }
@@ -246,17 +310,19 @@ public interface TaskInterface {
 
     void prepare();
 
-    boolean isTaskExist(Long id);
+    void close();
 
-    boolean isTaskExist(Long id, String title);
+    boolean isTaskExist(Long id);
 
     Task findTaskById(Long id);
 
-    void addTask(Long id, String title, String owner, String executor, String description, Task.Status status);
+    void addTask(String title, String owner, String executor, String description, Task.Status status);
 
     void editTask(Task newTask);
 
     void delTask(Long id);
+
+    void deleteAll();
 
     void printList();
 }
@@ -267,309 +333,110 @@ public interface TaskInterface {
 package com.geekbrains.training.homework.services;
 import com.geekbrains.training.homework.TaskInterface;
 import com.geekbrains.training.homework.entities.Task;
-import com.geekbrains.training.homework.exceptions.TaskAlreadyExist;
 import com.geekbrains.training.homework.exceptions.TaskNoFound;
-import java.util.*;
-public class TaskRepository implements TaskInterface {
-    private List<Task> tasks = new ArrayList<>();
-
-    TaskRepository() {
-        prepare();
-    }
-
-    List<Task> getTasks() {
-        return tasks;
-    }
-
-    @Override
-    public String getNameRepo() {
-        return "Репозиторий: в оперативной памяти (List).";
-    }
-
-    @Override
-    public void prepare() {
-        // [min;max) - генератор в диапазоне
-        final int MIN = 0;
-        final int MAX = 4;
-        for (int i = 0; i < 30; i += 2) {
-            tasks.add(new Task((long) i, "Task" + i, "Owner" + i, "Executor" + i, "Create task " + i, Task.Status.values()[(int) ((Math.random() * (MAX - MIN)) + MIN)]));
-        }
-    }
-
-    @Override
-    public boolean isTaskExist(Long id) {
-        for (Task task : tasks) {
-            if (task.getId().equals(id)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public boolean isTaskExist(Long id, String title) {
-        for (Task task : tasks) {
-            if (task.getId().equals(id) && task.getTitle().equals(title)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public Task findTaskById(Long id) {
-        if (id == null) {
-            throw new TaskNoFound("нельзя найти запись - нет идентификатора задачи");
-        }
-        for (Task task : tasks) {
-            if (task.getId().equals(id)) {
-                return task;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public void addTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
-        if (id == null) {
-            throw new TaskNoFound("нельзя добавить задачу - нет идентификатора");
-        }
-        if (title == null) {
-            throw new TaskNoFound("нельзя добавить задачу - нет названия");
-        }
-        for (Task task : tasks) {
-            if (task.getId().equals(id) && task.getTitle().equals(title)) {
-                throw new TaskAlreadyExist(id, title);
-            }
-        }
-
-        tasks.add(new Task(id, title, owner, executor, description, status == null ? Task.Status.CREATED : status));
-    }
-
-    @Override
-    public void editTask(Task newTask) {
-        if (newTask == null) {
-            throw new TaskNoFound("нельзя редактировать задачу - объект пустой");
-        }
-        if (newTask.getId() == null) {
-            throw new TaskNoFound("нельзя редактировать задачу - нет идентификатора");
-        }
-        if (newTask.getTitle() == null) {
-            throw new TaskNoFound("нельзя редактировать задачу - нет названия");
-        }
-
-        for (Task task : tasks) {
-            if (task.getId().equals(newTask.getId()) && task.getTitle().equals(newTask.getTitle())) {
-                task = newTask;
-                return;
-            }
-        }
-        throw new TaskNoFound("нельзя редактировать задачу - нет такой в репозитории [id = " + newTask.getId() + ", title = " + newTask.getTitle() + "]");
-    }
-
-    @Override
-    public void delTask(Long id) {
-        if (id == null) {
-            throw new TaskNoFound("нельзя удалить задачу - нет идентификатора");
-        }
-        for (int i = 0; i < tasks.size(); i++) {
-            if (tasks.get(i).getId().equals(id)) {
-                tasks.remove(i);
-                return; // пока считаем, что не может быть несколько задач с одинаковым id
-            }
-        }
-        throw new TaskNoFound("нельзя удалить задачу - нет такой в репозитории");
-    }
-
-    @Override
-    public void printList() {
-        if (tasks.size() == 0) {
-            System.out.println("Репозитарий пустой!");
-        } else {
-            for (Task task : tasks) {
-                if (task != null) {
-                    System.out.println(task);
-                }
-            }
-        }
-    }
-}
-
-
-
-
-package com.geekbrains.training.homework.services;
-import com.geekbrains.training.homework.TaskInterface;
-import com.geekbrains.training.homework.entities.Task;
-import com.geekbrains.training.homework.exceptions.TaskAlreadyExist;
-import com.geekbrains.training.homework.exceptions.TaskNoFound;
-import java.sql.*;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
 import java.util.ArrayList;
 import java.util.List;
+public class TaskRepoHibernate implements TaskInterface {
+    private SessionFactory factory = new Configuration()
+            .configure("hibernate.cfg.xml")
+            .buildSessionFactory();
+    private Session session; // мост между приложением и Hibernate
 
-public class TaskRepoDB implements TaskInterface {
-    private Connection connection;
-    private Statement stmt;
-
-    TaskRepoDB() {
+    // конструктор
+    TaskRepoHibernate() {
         prepare();
     }
 
+    // описание репозитария
     @Override
     public String getNameRepo() {
-        return "Репозиторий: БД " + connection.toString();
-    }
-
-    // получить список задач через коллекцию
-    List<Task> getTasks() {
-        List<Task> tasks = new ArrayList<>();
-        try {
-            connect();
-            ResultSet rs = stmt.executeQuery("select * from tasks;");
-            while (rs.next()) {
-                Long id = Long.valueOf(rs.getString("id"));
-                String title = rs.getString("title");
-                String owner = rs.getString("owner");
-                String executor = rs.getString("executor");
-                String description = rs.getString("description");
-                Task.Status status = Task.Status.valueOf(rs.getString("status"));
-
-                tasks.add(new Task(id, title, owner, executor, description, status));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            disconnect();
-        }
-        return tasks;
+        return "БД в памяти (JDBC.H2 + Hibernate)";
     }
 
     // подготовка репозитория
     @Override
     public void prepare() {
+        this.factory = new Configuration()
+                .configure("hibernate.cfg.xml")
+                .buildSessionFactory();
+
         // [min;max) - генератор в диапазоне
         final int MIN = 0;
         final int MAX = 4;
-        String query;
-        try {
-            connect();
-            stmt.executeUpdate("delete from tasks;");
-            for (int i = 0; i < 20; i += 2) {
-                query = "insert into tasks (id, title, owner, executor, description, status) " +
-                        "values (" + i + ", '" + "Task" + i + "', '" + "Owner" + i + "', '" + "Executor" + i + "', '" + "Description" + i + "', '" + Task.Status.values()[(int) ((Math.random() * (MAX - MIN)) + MIN)] + "');";
-                stmt.executeUpdate(query);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            disconnect();
+        for (int i = 1; i < 21; i++) {
+            addTask("Title" + i, "Owner" + i, "Executor" + i, "Description" + i, Task.Status.values()[(int) ((Math.random() * (MAX - MIN)) + MIN)]);
         }
     }
 
-    // проверка существования задачи по идентификатору
+    // закрытие репозитория
+    @Override
+    public void close() {
+        factory.close();
+        if (session != null) {
+            session.close();
+        }
+    }
+
+    // проверить, что существует задача с заданным идентификатором
     @Override
     public boolean isTaskExist(Long id) {
         if (id == null) {
             throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
         }
 
-        boolean res = false;
-        String query = "select count(1) from tasks where id = " + id + ";";
+        Task task = new Task();
         try {
-            connect();
-            ResultSet rs = stmt.executeQuery(query);
-            while (rs.next()) {
-                res = rs.getInt(1) == 1;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+            openSession();
+            task = session.get(Task.class, id);
         } finally {
-            disconnect();
+            closeSession();
         }
-        return res;
-    }
-
-    // проверка существования задачи по идентификатору и названию
-    @Override
-    public boolean isTaskExist(Long id, String title) {
-        if (id == null) {
-            throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
-        }
-        if (title == null) {
-            throw new TaskNoFound("нельзя найти задачу - нет названия");
-        }
-
-        boolean res = false;
-        String query = "select count(1) from tasks where id = " + id + " and title = '" + title + "';";
-        try {
-            connect();
-            ResultSet rs = stmt.executeQuery(query);
-            while (rs.next()) {
-                res = rs.getInt(1) == 1;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            disconnect();
-        }
-        return res;
+        return task != null;
     }
 
     // найти задачу по идентификатору
     @Override
-    public Task findTaskById(Long inId) {
-        if (inId == null) {
-            throw new TaskNoFound("нельзя найти запись - нет идентификатора задачи");
+    public Task findTaskById(Long id) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
         }
-        Task task = null;
-        String query = "select * from tasks where id = " + inId + ";";
-        try {
-            connect();
-            ResultSet rs = stmt.executeQuery(query);
-            while (rs.next()) {
-                Long id = Long.valueOf(rs.getString("id"));
-                String title = rs.getString("title");
-                String owner = rs.getString("owner");
-                String executor = rs.getString("executor");
-                String description = rs.getString("description");
-                Task.Status status = Task.Status.valueOf(rs.getString("status"));
 
-                task = new Task(id, title, owner, executor, description, status);
-                break;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        Task task = new Task();
+        try {
+            openSession();
+            task = session.get(Task.class, id);
         } finally {
-            disconnect();
+            closeSession();
         }
         return task;
     }
 
-    // добавить задачу
+    // добавить новую задачу
     @Override
-    public void addTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
-        if (id == null) {
-            throw new TaskNoFound("нельзя добавить задачу - нет идентификатора");
-        }
+    public void addTask(String title, String owner, String executor, String description, Task.Status status) {
         if (title == null) {
             throw new TaskNoFound("нельзя добавить задачу - нет названия");
         }
-        if (isTaskExist(id)) {
-            throw new TaskAlreadyExist(id, title);
-        }
 
-        String query = "insert into tasks (id, title, owner, executor, description, status) " +
-                "values (" + id + ", '" + title + "', '" + owner + "', '" + executor + "', '" + description + "', '" + status.name() + "');";
+        Task task = new Task();
+        task.setTitle(title);
+        task.setOwner(owner);
+        task.setExecutor(executor);
+        task.setDescription(description);
+        task.setStatus(status);
+
         try {
-            connect();
-            stmt.executeUpdate(query);
-        } catch (Exception e) {
-            e.printStackTrace();
+            openSession();
+            session.save(task);
         } finally {
-            disconnect();
+            closeSession();
         }
     }
 
+    // изменить задачу (указываем в sql-запросе не имя таблицы, а имя класса)
     @Override
     public void editTask(Task newTask) {
         if (newTask == null) {
@@ -584,19 +451,22 @@ public class TaskRepoDB implements TaskInterface {
         if (!isTaskExist(newTask.getId())) {
             throw new TaskNoFound("не найдена задача с id = " + newTask.getId());
         }
-
-        String query = "update tasks set title = '" + newTask.getTitle() + "', owner = '" + newTask.getOwner() + "', executor = '" + newTask.getExecutor() + "', description = '" + newTask.getDescription() + "', status = '" + newTask.getStatus() + "' where id = " + newTask.getId() + ";";
         try {
-            connect();
-            stmt.executeUpdate(query);
-        } catch (Exception e) {
-            e.printStackTrace();
+            openSession();
+            Task oldTask = session.createQuery("SELECT t FROM Task t WHERE t.id = :id", Task.class)
+                    .setParameter("id", newTask.getId())
+                    .getSingleResult();
+            oldTask.setTitle(newTask.getTitle());
+            oldTask.setOwner(newTask.getOwner());
+            oldTask.setExecutor(newTask.getExecutor());
+            oldTask.setDescription(newTask.getDescription());
+            oldTask.setStatus(newTask.getStatus());
         } finally {
-            disconnect();
+            closeSession();
         }
     }
 
-    // удалить задачу по идентификатору
+    // удалить задачу
     @Override
     public void delTask(Long id) {
         if (id == null) {
@@ -606,18 +476,38 @@ public class TaskRepoDB implements TaskInterface {
             throw new TaskNoFound("не найдена задача с id = " + id);
         }
 
-        String query = "delete from tasks where id =" + id + ";";
         try {
-            connect();
-            stmt.executeUpdate(query);
-        } catch (Exception e) {
-            e.printStackTrace();
+            openSession();
+            session.delete(session.get(Task.class, id));
         } finally {
-            disconnect();
+            closeSession();
         }
     }
 
-    // распечатать список задач
+    // удалить все задачи
+    @Override
+    public void deleteAll() {
+        try {
+            openSession();
+            session.createQuery("DELETE FROM Task").executeUpdate();
+        } finally {
+            closeSession();
+        }
+    }
+
+    // получить список задач через коллекцию
+    public List<Task> getTasks() {
+        List<Task> tasks = new ArrayList<>();
+        try {
+            openSession();
+            tasks = session.createQuery("SELECT t FROM Task t ORDER BY t.id").getResultList();
+        } finally {
+            closeSession();
+        }
+        return tasks;
+    }
+
+    // напечатать список задач
     @Override
     public void printList() {
         List<Task> tasks = getTasks();
@@ -626,25 +516,30 @@ public class TaskRepoDB implements TaskInterface {
         }
     }
 
-    // подключиться с БД
-    private void connect() throws ClassNotFoundException, SQLException {
-        Class.forName("org.sqlite.JDBC");
-        connection = DriverManager.getConnection("jdbc:sqlite:E:\\SQLite\\example.db"); // открываем соединение с БД
-        stmt = connection.createStatement(); // позволяет отправлять запросы через соединение
+    // создать задачу по данным
+    public Task createTaskByInfo(String title, String owner, String executor, String description, Task.Status status) {
+        Task task = new Task();
+        task.setTitle(title);
+        task.setOwner(owner);
+        task.setExecutor(executor);
+        task.setDescription(description);
+        task.setStatus(status);
+
+        return task;
     }
 
-    // отключиться от БД
-    private void disconnect() {
-        // закрываем всё в обратном порядке по степени важности (чтобы гарантированно не было проблем)
-        try {
-            stmt.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        try {
-            connection.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    // Session и EntityManager это единица работы, в данном случае на каждую операцию можно открывать и закрывать её, это не сильно затратно по ресурсам
+    // открыть сессию с БД
+    private void openSession() {
+        session = factory.getCurrentSession();
+        session.beginTransaction();
+    }
+
+    // закрыть сессию с БД
+    private void closeSession() {
+        session.getTransaction().commit();
+        if (session != null) {
+            session.close();
         }
     }
 }
@@ -664,38 +559,35 @@ import java.io.IOException;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
-
 public class TaskService {
-    private String delimiter = ";";
+    private final String delimiter = ";";
+    private final String fileName = "Repository.csv";
+    private TaskRepoHibernate taskRepository;
 
-/*
-    private TaskRepository taskRepository;
+    // конструктор
     public TaskService() {
-        taskRepository = new TaskRepository();
-    }*/
-
-    private TaskRepoDB taskRepository;
-
-    public TaskService() {
-        taskRepository = new TaskRepoDB();
+        taskRepository = new TaskRepoHibernate();
     }
 
+    // описание репозитария
     public String getNameRepo() {
         return taskRepository.getNameRepo();
     }
 
-    public void isTaskExist(Long id, String title) {
+    // проверить, что существует задача с заданным идентификатором
+    public void isTaskExist(Long id) {
         try {
-            if (taskRepository.isTaskExist(id, title)) {
-                System.out.println(Fonts.Color.GREEN + "Задача найдена [id = " + id + ", title = " + title + "]" + Fonts.Color.RESET);
+            if (taskRepository.isTaskExist(id)) {
+                System.out.println(Fonts.Color.GREEN + "Задача найдена [id = " + id + "]" + Fonts.Color.RESET);
             } else {
-                System.out.println(Fonts.Color.RED + "Задача отсутствует [id = " + id + ", title = " + title + "]!" + Fonts.Color.RESET);
+                System.out.println(Fonts.Color.RED + "Задача отсутствует [id = " + id + "]!" + Fonts.Color.RESET);
             }
         } catch (TaskNoFound e) {
             System.out.println(Fonts.Color.RED + e.getMessage() + Fonts.Color.RESET);
         }
     }
 
+    // найти задачу по идентификатору
     public Task findTaskById(Long id) {
         Task task = null;
         try {
@@ -711,15 +603,17 @@ public class TaskService {
         return task;
     }
 
-    public void addTask(Long id, String title, String owner, String executor, String description, Task.Status status) {
+    // добавить новую задачу
+    public void addTask(String title, String owner, String executor, String description, Task.Status status) {
         try {
-            taskRepository.addTask(id, title, owner, executor, description, status == null ? Task.Status.CREATED : status);
-            System.out.println(Fonts.Color.GREEN + "Задача успешно добавлена [id = " + id + ", title = " + title + "]" + Fonts.Color.RESET);
+            taskRepository.addTask(title, owner, executor, description, status == null ? Task.Status.CREATED : status);
+            System.out.println(Fonts.Color.GREEN + "Задача успешно добавлена [title = " + title + "]" + Fonts.Color.RESET);
         } catch (TaskAlreadyExist | TaskNoFound e) {
             System.out.println(Fonts.Color.RED + e.getMessage() + Fonts.Color.RESET);
         }
     }
 
+    // изменить задачу
     public void editTask(Task newTask) {
         try {
             taskRepository.editTask(newTask);
@@ -729,6 +623,7 @@ public class TaskService {
         }
     }
 
+    // удалить задачу
     public void delTask(Long id) throws TaskNoFound {
         try {
             taskRepository.delTask(id);
@@ -738,8 +633,29 @@ public class TaskService {
         }
     }
 
+    // удалить все задачи
+    public void deleteAll() {
+        taskRepository.deleteAll();
+    }
+
+    // получить список задач через коллекцию
+    public List<Task> getTasks() {
+        List<Task> tasks = taskRepository.getTasks();
+        return tasks;
+    }
+
+    // напечатать список задач
     public void printList() {
         taskRepository.printList();
+    }
+
+    // создать задачу по данным
+    public Task createTaskByInfo(String title, String owner, String executor, String description, Task.Status status) {
+        return taskRepository.createTaskByInfo(title, owner, executor, description, status);
+    }
+
+    public void close() {
+        taskRepository.close();
     }
 
     /////////////////////////////////////////////////////////////////////////////////
@@ -780,7 +696,7 @@ public class TaskService {
     public int saveRepoToFile() {
         int countRows = 0;
         try {
-            FileWriter writer = new FileWriter("Repository.csv");
+            FileWriter writer = new FileWriter(fileName);
             for (Task task : taskRepository.getTasks()) {
                 writer.write(task.getId() + delimiter + task.getTitle() + delimiter + task.getOwner() + delimiter + task.getExecutor() + delimiter + task.getDescription() + delimiter + task.getStatus());
                 writer.write(System.getProperty("line.separator"));
@@ -797,21 +713,21 @@ public class TaskService {
     public int readRepoFromFile() {
         int countRows = 0;
         try {
-            FileReader fr = new FileReader("Repository.csv");
+            FileReader fr = new FileReader(fileName);
             BufferedReader reader = new BufferedReader(fr);
             String line = null;
             while ((line = reader.readLine()) != null) {
                 // читаем всю строку с разделителями
                 StringTokenizer stk = new StringTokenizer(line, delimiter);
                 // парсим
-                Long id = Long.valueOf(stk.nextToken());
+                //Long id = Long.valueOf(stk.nextToken());
+                stk.nextToken(); // id автогенерируется в БД
                 String title = stk.nextToken();
                 String owner = stk.nextToken();
                 String executor = stk.nextToken();
                 String description = stk.nextToken();
-                Task.Status status = Task.Status.valueOf(stk.nextToken());
-
-                addTask(id, title, owner, executor, description, status);
+                String status = stk.nextToken();
+                addTask(title, owner, executor, description, Task.Status.valueOf(status));
                 countRows++;
             }
             reader.close();
@@ -828,39 +744,35 @@ public class TaskService {
 package com.geekbrains.training.homework;
 import com.geekbrains.training.homework.entities.Task;
 import com.geekbrains.training.homework.fonts.Fonts;
-import com.geekbrains.training.homework.services.TaskRepoDB;
 import com.geekbrains.training.homework.services.TaskService;
-import java.sql.*;
 import java.util.List;
-
 public class MainApp {
-    private static Connection connection;
-    private static Statement stmt;
-    private static PreparedStatement psInsert;
-
     public static void main(String[] args) {
-        // создание репозитория
-        System.out.println("+-----------------------------+");
-        System.out.println("| Создан репозиторий          |");
-        System.out.println("+-----------------------------+");
+        System.out.println("+-------------------------------+");
+        System.out.println("| Создание репозитория          |");
+        System.out.println("+-------------------------------+");
         TaskService taskService = new TaskService();
         System.out.println(taskService.getNameRepo());
+        System.out.println("Создан список задач:");
         taskService.printList();
         System.out.println();
 
         System.out.println("+-----------------------------+");
         System.out.println("| Проверка поиска isTaskExist |");
         System.out.println("+-----------------------------+");
-        taskService.isTaskExist(0L, "Task0");
-        taskService.isTaskExist(1L, "Task1");
-        taskService.isTaskExist(null, "Task2");
-        taskService.isTaskExist(2L, null);
+        taskService.isTaskExist(0L);
+        taskService.isTaskExist(1L);
+        taskService.isTaskExist(null);
+        taskService.isTaskExist(2L);
+        taskService.isTaskExist(888L);
         System.out.println();
 
-        System.out.println("+-----------------------------+");
+        System.out.println("+------------------------------+");
         System.out.println("| Проверка поиска findTaskById |");
-        System.out.println("+-----------------------------+");
+        System.out.println("+------------------------------+");
         taskService.findTaskById(null);
+        taskService.findTaskById(1L);
+        taskService.findTaskById(2L);
         taskService.findTaskById(888L);
         taskService.findTaskById(0L);
         System.out.println();
@@ -868,13 +780,11 @@ public class MainApp {
         System.out.println("+---------------------+");
         System.out.println("| Проверка добавления |");
         System.out.println("+---------------------+");
-        taskService.addTask(1L, "Task1", "owner1", "executor1", "Create task 1", null);
+        taskService.addTask("Task1", "owner1", "executor1", "Create task 1", null);
         System.out.println("Повторное добавление такой же записи:");
-        taskService.addTask(1L, "Task1", "owner1", "executor1", "Create task 1", null);
-        System.out.println("Добавление id = NULL:");
-        taskService.addTask(null, "Task1", "owner1", "executor1", "Create task 1", null);
+        taskService.addTask("Task1", "owner1", "executor1", "Create task 1", null);
         System.out.println("Добавление title = NULL:");
-        taskService.addTask(10L, null, "owner10", "executor10", "Create task 10", null);
+        taskService.addTask(null, "owner10", "executor10", "Create task 10", null);
         taskService.printList();
         System.out.println();
 
@@ -890,7 +800,7 @@ public class MainApp {
         newTask.setDescription("NewDescription1");
         newTask.setStatus(Task.Status.REJECTED);
         taskService.editTask(newTask);
-        taskService.editTask(new Task(888L, "Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CLOSED));
+        taskService.editTask(taskService.createTaskByInfo("Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CLOSED));
         taskService.printList();
         System.out.println();
 
@@ -899,6 +809,8 @@ public class MainApp {
         System.out.println("+-------------------+");
         taskService.delTask(null);
         taskService.delTask(1L);
+        taskService.printList();
+
         taskService.delTask(1L);
         taskService.printList();
         System.out.println();
@@ -906,8 +818,8 @@ public class MainApp {
         System.out.println("+-------------------------------------+");
         System.out.println("| Проверка добавления с переполнением |");
         System.out.println("+-------------------------------------+");
-        for (int i = 0; i < 12; i++) {
-            taskService.addTask((long) i, "Task" + i, "NewOwner" + i, "NewExecutor" + i, "Create new task " + i, null);
+        for (int i = 1; i < 12; i++) {
+            taskService.addTask("Task" + i, "NewOwner" + i, "NewExecutor" + i, "Create new task " + i, null);
         }
         taskService.printList();
         System.out.println();
@@ -981,7 +893,6 @@ public class MainApp {
         System.out.println(status.getRusTitle() + " = " + taskService.streamCountTasksByStatus(status) + " задач");
         System.out.println();
 
-
         System.out.println("+-------------------------------------+");
         System.out.println("|                 I / O               |");
         System.out.println("+-------------------------------------+");
@@ -991,19 +902,19 @@ public class MainApp {
         System.out.println("Записано в файл " + taskService.saveRepoToFile() + " строк.");
         System.out.println();
 
-        System.out.println("Загружено из файла " + taskService.readRepoFromFile() + " строк."); // ошибки, т.к. такие строки уже есть
+        System.out.println("Чистка репозитория.");
+        taskService.deleteAll();
+        System.out.println("Cписок задач в репозитории после чистки:");
+        taskService.printList();
+        System.out.println("-------");
+
+        System.out.println("Загружено из файла " + taskService.readRepoFromFile() + " строк.");
         System.out.println();
 
-        // почистим репозиторий
-        for (int i = 0; i < 30; i += 2) {
-            taskService.delTask((long) i);
-        }
-        System.out.println();
-
-        System.out.println(Fonts.Color.BLUE + "Список задач:" + Fonts.Color.RESET);
+        System.out.println(Fonts.Color.BLUE + "Список задач в репозитории после загрузки:" + Fonts.Color.RESET);
         taskService.printList();
         System.out.println();
 
-        System.out.println("Считано из файла " + taskService.readRepoFromFile() + " строк.");
+        taskService.close();
     }
 }
