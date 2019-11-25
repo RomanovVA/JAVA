@@ -338,6 +338,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 public class TaskRepoHibernate implements TaskInterface {
     private SessionFactory factory = new Configuration()
@@ -504,7 +505,7 @@ public class TaskRepoHibernate implements TaskInterface {
         } finally {
             closeSession();
         }
-        return tasks;
+        return Collections.unmodifiableList(tasks);
     }
 
     // напечатать список задач
@@ -538,9 +539,7 @@ public class TaskRepoHibernate implements TaskInterface {
     // закрыть сессию с БД
     private void closeSession() {
         session.getTransaction().commit();
-        if (session != null) {
-            session.close();
-        }
+        session.close();
     }
 }
 
@@ -556,6 +555,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
@@ -640,8 +640,7 @@ public class TaskService {
 
     // получить список задач через коллекцию
     public List<Task> getTasks() {
-        List<Task> tasks = taskRepository.getTasks();
-        return tasks;
+        return Collections.unmodifiableList(taskRepository.getTasks()); // чтобы никто не мог менять список
     }
 
     // напечатать список задач
@@ -663,9 +662,9 @@ public class TaskService {
     /////////////////////////////////////////////////////////////////////////////////
     // получение списка задач по выбранному статусу
     public List<Task> streamTaskListByStatus(Task.Status status) {
-        return taskRepository.getTasks().stream()
+        return Collections.unmodifiableList(taskRepository.getTasks().stream()
                 .filter(task -> task.getStatus() == status)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     // проверка наличия задачи с указанным ID
@@ -678,9 +677,9 @@ public class TaskService {
 
     // получение списка задач в отсортированном по статусу виде
     public List<Task> streamPrintTaskListSortByStatus() {
-        return taskRepository.getTasks().stream()
+        return Collections.unmodifiableList(taskRepository.getTasks().stream()
                 .sorted((o1, o2) -> o1.getStatus().compareTo(o2.getStatus()))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     // подсчёт количества задач по определенному статусу
