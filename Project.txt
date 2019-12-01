@@ -1,24 +1,32 @@
 ﻿///////////////////////////////////////////////////////////////////////////////////////
-//  П Р О Е К Т   (SPRING CORE + HIBERNATE + H2)
+//  П Р О Е К Т   (Spring MVC + Jetty + Hibernate + H2)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 POM.XML:
+
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.geekbrains.training</groupId>
+    <groupId>com.geekbrains.training.homework</groupId>
     <artifactId>homework</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging> <!-- встроенный web-сервер: jar, внешний - war -->
+
+    <name>JEE Maven WebApp</name>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <spring.version>5.2.0.RELEASE</spring.version>
+        <jetty.version>9.2.26.v20180806</jetty.version>
     </properties>
 
     <dependencies>
+        <!-- HIBERNATE + DB H2 -->
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-core</artifactId>
@@ -30,49 +38,234 @@ POM.XML:
             <version>1.4.200</version>
         </dependency>
         <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-c3p0</artifactId>
+            <version>5.4.4.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-orm</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+
+        <!-- SPRING -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
-            <version>5.1.2.RELEASE</version>
+            <version>${spring.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context</artifactId>
-            <version>5.1.2.RELEASE</version>
+            <version>${spring.version}</version>
+        </dependency>
+
+        <!-- WEB-СЕРВЕР JETTY -->
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>${jetty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-webapp</artifactId>
+            <version>${jetty.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-jsp</artifactId>
+            <version>${jetty.version}</version>
+        </dependency>
+
+        <!-- THYMELEAF позволяет вставлять в html куски кода java и подкидыват данные -->
+        <dependency>
+            <groupId>org.thymeleaf</groupId>
+            <artifactId>thymeleaf-spring5</artifactId>
+            <version>3.0.10.RELEASE</version>
+        </dependency>
+
+        <!-- сериализация / десериализация json -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
+        </dependency>
+
+        <!-- ЛОГГЕР -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.1.7</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <finalName>jee</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
 
 
 
 
 
-RESOURCE:  HIBERNATE.H2.CFG.XML
-<!DOCTYPE hibernate-configuration PUBLIC
-        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
-        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+BEANS.XML:
 
-<hibernate-configuration>
-    <session-factory>
-        <property name="connection.driver_class">org.h2.Driver</property>
-        <property name="connection.url">jdbc:h2:mem:mydatabase;MODE=PostgreSQL</property>
-        <property name="connection.username">sa</property>
-        <property name="connection.password"></property>
-        <property name="connection.pool_size">8</property>
-        <property name="dialect">org.hibernate.dialect.H2Dialect</property>
-        <property name="show_sql">false</property>
-        <property name="current_session_context_class">thread</property>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:tx="http://www.springframework.org/schema/tx"
 
-        <property name="hibernate.hbm2ddl.auto">create-drop</property>
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
 
-        <mapping class="com.geekbrains.training.homework.entities.Task"/>
-    </session-factory>
-</hibernate-configuration>
+    <!-- когда отправляем объект - он сериализуется в json, когда получаем json - он десериализуется в объект нашего класса -->
+    <mvc:annotation-driven>
+        <mvc:message-converters>
+            <bean class="org.springframework.http.converter.StringHttpMessageConverter"/>
+            <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"/>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+
+    <context:component-scan base-package="com.geekbrains.training.homework"/>
+
+    <!-- шаблоны html-страниц -->
+    <bean id="templateResolver" class="org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver">
+        <property name="prefix" value="/WEB-INF/templates/"/>
+        <property name="suffix" value=".html"/>
+        <property name="templateMode" value="HTML"/>
+    </bean>
+
+    <!-- Thymeleaf (обработчик html) - будет пересобирать страницы -->
+    <bean id="templateEngine" class="org.thymeleaf.spring5.SpringTemplateEngine">
+        <property name="templateResolver" ref="templateResolver"/>
+    </bean>
+    <bean class="org.thymeleaf.spring5.view.ThymeleafViewResolver">
+        <property name="templateEngine" ref="templateEngine"/>
+        <property name="characterEncoding" value="UTF-8"/>
+    </bean>
+
+    <!-- подключение к БД H2 -->
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="org.h2.Driver"/>
+        <!-- <property name="url" value="jdbc:h2:mem:mydatabase;MODE=PostgreSQL"/> -->
+        <!-- При работе с H2 в файловом режиме необходимо указывать абсолютный путь -->
+        <property name="url" value="jdbc:h2:file:C:/Java/mydatabase;MODE=PostgreSQL"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+    </bean>
+
+    <!-- фабрика сессий - в виде bean-а, а не в виде отдельного файла -->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"/> <!-- инжекшн через setter -->
+        <property name="packagesToScan" value="com.geekbrains.training.homework.entities"/> <!-- где ищем сущности -->
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">org.hibernate.dialect.H2Dialect</prop>
+                <prop key="hibernate.hbm2ddl.auto">create-drop</prop>
+                <prop key="hibernate.show_sql">true</prop>
+            </props>
+        </property>
+    </bean>
+
+    <!-- то, что будет управлять транзакциями -->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <property name="sessionFactory"
+                  ref="sessionFactory"/>  <!-- скинули менеджеру транзакций ссылку на SessionFactory -->
+    </bean>
+
+    <!-- транзакциями будем управлять через аннотации -->
+    <tx:annotation-driven/>
+
+    <!-- маппинг ресурсов webapp -> resources (js, css) -->
+    <mvc:resources mapping="/resources/**" location="/resources/"/>
+</beans>
 
 
 
 
 
-RESOURCE:  IMPORT.SQL
+WEB.XML:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         id="WebApp_ID" version="3.1">
+
+    <display-name>Spring MVC Jetty Server Application</display-name>
+
+    <servlet>
+        <servlet-name>mvc-dispatcher</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>/WEB-INF/beans.xml</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>mvc-dispatcher</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+</web-app>
+
+
+
+
+
+IMPORT.SQL :
+
 insert into tasks (id, title, owner, executor, description, status) values ( 2, 'Task2',  'Owner2',  'Executor2',  'Description2',  'CREATED');
 insert into tasks (id, title, owner, executor, description, status) values ( 4, 'Task4',  'Owner4',  'Executor4',  'Description4',  'IN_WORK');
 insert into tasks (id, title, owner, executor, description, status) values ( 6, 'Task6',  'Owner6',  'Executor6',  'Description6',  'CLOSED');
@@ -84,6 +277,147 @@ insert into tasks (id, title, owner, executor, description, status) values (16, 
 insert into tasks (id, title, owner, executor, description, status) values (18, 'Task18', 'Owner18', 'Executor18', 'Description18', 'REJECTED');
 insert into tasks (id, title, owner, executor, description, status) values (20, 'Task20', 'Owner20', 'Executor20', 'Description20', 'SUSPENDED');
 
+
+
+
+
+INDEX.HTML:
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Spring MVC</title>
+</head>
+
+<body>
+    <h1>Веб-приложение: Spring MVC + Jetty + Hibernate + H2</h1>
+    <h4>Оглавление:</h4>
+    <a th:href="@{/tasks/show}">Показать список всех задач</a>
+    <br/><br/>
+    <a th:href="@{/tasks/add}">Добавить новую задачу</a>
+    <br/>
+</body>
+</html>
+
+
+
+
+
+ALL_TASKS.HTML :
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Spring MVC</title>
+</head>
+
+<body>
+<h1>Список задач:</h1>
+<table>
+    <thead>
+    <tr>
+        <td>ID</td>
+        <td>Title</td>
+        <td>Owner</td>
+        <td>Executor</td>
+        <td>Description</td>
+        <td>Status</td>
+    </tr>
+    </thead>
+    <tbody>
+    <!--/*@thymesVar id="tasks" type="java.util.List<com.geekbrains.training.homework.entities.Task>"*/-->
+    <tr th:each="t : ${tasks}">
+        <td th:text="${t.id}"></td>
+        <td th:text="${t.title}"></td>
+        <td th:text="${t.owner}"></td>
+        <td th:text="${t.executor}"></td>
+        <td th:text="${t.description}"></td>
+        <td th:text="${t.status}"></td>
+    </tr>
+    </tbody>
+</table>
+<br/><br/>
+<a th:href="@{/tasks/}">на Главную страницу</a>
+</body>
+</html>
+
+
+
+
+
+ADD.HTML :
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Spring MVC</title>
+</head>
+<body>
+<!--/*@thymesVar id="task" type="com.geekbrains.training.homework.entities.Task"*/-->
+<form th:action="@{/tasks/add_result}" th:object="${task}" method="POST">
+    <h1>Информация для новой задачи:</h1>
+    Title: <input th:field="*{title}"/>
+    <br/><br/>
+    Owner: <input th:field="*{owner}"/>
+    <br/><br/>
+    Executor: <input th:field="*{executor}"/>
+    <br/><br/>
+    Description: <input th:field="*{description}"/>
+    <br/><br/>
+    Status:
+    <select th:field="*{status}">
+        <option value="CREATED" th:text="CREATED" label="CREATED"/>
+        <option value="IN_WORK" th:text="IN_WORK" label="IN_WORK"/>
+        <option value="CLOSED" th:text="CLOSED" label="CLOSED"/>
+        <option value="REJECTED" th:text="REJECTED" label="REJECTED"/>
+        <option value="SUSPENDED" th:text="SUSPENDED" label="SUSPENDED"/>
+    </select>
+    <br/><br/>
+    <input type="submit" value="Сохранить"/>
+    <br/><br/>
+</form>
+<a th:href="@{/tasks/}">на Главную страницу</a>
+</body>
+</html>
+
+
+
+
+
+ADD_RESULT.HTML :
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Spring MVC</title>
+</head>
+<body>
+<h1>Добавлена задача:</h1>
+<!--/*@thymesVar id="task" type="com.geekbrains.training.homework.entities.Task"*/-->
+<span th:text="'Title: ' + ${task.title}"/>
+<br/><br/>
+<span th:text="'Owner: ' + ${task.owner}"/>
+<br/><br/>
+<span th:text="'Executor: ' + ${task.executor}"/>
+<br/><br/>
+<span th:text="'Description: ' + ${task.description}"/>
+<br/><br/>
+<span th:text="'Status: ' + ${task.status}"/>
+<br/><br/>
+<a th:href="@{/tasks/}">на Главную страницу</a>
+</body>
+</html>
 
 
 
@@ -123,30 +457,6 @@ public class TaskNoFound extends RuntimeException {
 
 
 
-package com.geekbrains.training.homework;
-import org.hibernate.SessionFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-// в проекте может быть несколько конфигурационных файлов - удобно делить, например, на настройки приложения, безопасности, почты и т.д.
-@Configuration
-// искать все размеченные классы начиная с заданного пакета
-@ComponentScan(basePackages = {"com.geekbrains.training.homework"})
-public class TaskConfig {
-    // здесь можно делать ручную настройку Bean-ов - если хотим перенастроить базовые Bean-ы Spring (безопасность, url-ы, интернационализация, JDBCTemplate)
-    @Bean(name = "sessionFactory")
-    public SessionFactory sessionFactory() {
-        SessionFactory factory = new org.hibernate.cfg.Configuration()
-                .configure("hibernate.H2.cfg.xml")
-                .buildSessionFactory();
-        return factory;
-    }
-}
-
-
-
-
-
 package com.geekbrains.training.homework.entities;
 import javax.persistence.*;
 import java.io.Serializable;
@@ -154,20 +464,6 @@ import java.io.Serializable;
 @Entity
 @Table(name = "tasks")
 public class Task implements Serializable { // для web-уровня
-    public enum Status {
-        CREATED("Создана"), IN_WORK("В работе"), CLOSED("Закрыта"), REJECTED("Отклонена"), SUSPENDED("Приостановлена");;
-
-        private String rusTitle;
-
-        Status(String rusTitle) {
-            this.rusTitle = rusTitle;
-        }
-
-        public String getRusTitle() {
-            return rusTitle;
-        }
-    }
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // за генерацию id отвечает БД
     @Column(name = "id")
@@ -261,54 +557,32 @@ public class Task implements Serializable { // для web-уровня
 
 
 
-package com.geekbrains.training.homework;
-import com.geekbrains.training.homework.entities.Task;
-public interface TaskInterface {
-    String getNameRepo();
-
-    void close();
-
-    boolean isTaskExist(Long id);
-
-    Task findTaskById(Long id);
-
-    void addTask(String title, String owner, String executor, String description, String status);
-
-    void editTask(Task newTask);
-
-    void delTask(Long id);
-
-    void deleteAllTasks();
-}
-
-
-
-
-
 package com.geekbrains.training.homework.services;
-import com.geekbrains.training.homework.TaskInterface;
 import com.geekbrains.training.homework.entities.Task;
 import com.geekbrains.training.homework.exceptions.TaskNoFound;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 // Наследник аннотации Component. Сканируется Spring и считается Bean-ом
 @Repository
-public class TaskRepoHibernate implements TaskInterface {
+// В рамках каждого метода в классе будет открыта одна транзакция (Session)
+@Transactional
+public class TaskRepoHibernate {
     // используя EntityManager - можно менять Hibernate на другую библиотеку, при этом код остаётся тем же самым
     // НО только в Session есть доп.возможности Hibernate
     // EntityManager - аналог Session, единица работы (Session extends EntityManager)
-    // SessionFactory - тяжеловесный объект, должен быть один в проекте на все репозитории (выносим в config)
-    private SessionFactory factory;
-    private Session session; // мост между приложением и Hibernate
+    // SessionFactory - тяжеловесный объект, должен быть один в проекте на все репозитории (выносим в config или в Bean)
+    private SessionFactory sessionFactory;
+    //private Session session; // мост между приложением и Hibernate
 
     @Autowired
-    public void setFactory(SessionFactory factory) {
-        this.factory = factory;
+    public void setSessionFactory(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
     }
 
     // конструктор - дефолтный, для его инициализации есть специальная аннотация PostConstruct
@@ -316,79 +590,42 @@ public class TaskRepoHibernate implements TaskInterface {
     public TaskRepoHibernate() {
     }
 
-    // описание репозитария
-    @Override
-    public String getNameRepo() {
-        return "БД в памяти (Spring Core + Hibernate + JDBC.H2)";
-    }
-
-    // закрытие репозитория
-    @Override
-    public void close() {
-        factory.close();
-        if (session != null) {
-            session.close();
-        }
-    }
-
     // проверить, что существует задача с заданным идентификатором
-    @Override
     public boolean isTaskExist(Long id) {
         if (id == null) {
             throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
         }
 
+        Session session = sessionFactory.getCurrentSession();
         Task task = new Task();
-        try {
-            openSession();
-            task = session.get(Task.class, id);
-        } finally {
-            closeSession();
-        }
+        task = session.get(Task.class, id);
+
         return task != null;
     }
 
     // найти задачу по идентификатору
-    @Override
     public Task findTaskById(Long id) {
         if (id == null) {
             throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
         }
 
+        Session session = sessionFactory.getCurrentSession();
         Task task = new Task();
-        try {
-            openSession();
-            task = session.get(Task.class, id);
-        } finally {
-            closeSession();
-        }
+        task = session.get(Task.class, id);
+
         return task;
     }
 
     // добавить новую задачу
-    @Override
-    public void addTask(String title, String owner, String executor, String description, String status) {
-        if (title == null) {
-            throw new TaskNoFound("нельзя добавить задачу - нет названия");
+    public void addTask(Task task) {
+        if (task == null) {
+            throw new TaskNoFound("нельзя добавить задачу - передан пустой объект");
         }
-
-        Task task = new Task();
-        task.setTitle(title);
-        task.setOwner(owner);
-        task.setExecutor(executor);
-        task.setDescription(description);
-        task.setStatus(status);
-
-        try {
-            openSession();
-            session.save(task);
-        } finally {
-            closeSession();
-        }
+        Session session = sessionFactory.getCurrentSession();
+        session.save(task);
     }
 
     // изменить задачу (указываем в sql-запросе не имя таблицы, а имя класса)
-    @Override
     public void editTask(Task newTask) {
         if (newTask == null) {
             throw new TaskNoFound("нельзя редактировать задачу - объект пустой");
@@ -402,23 +639,19 @@ public class TaskRepoHibernate implements TaskInterface {
         if (!isTaskExist(newTask.getId())) {
             throw new TaskNoFound("не найдена задача с id = " + newTask.getId());
         }
-        try {
-            openSession();
-            Task oldTask = session.createQuery("SELECT t FROM Task t WHERE t.id = :id", Task.class)
-                    .setParameter("id", newTask.getId())
-                    .getSingleResult();
-            oldTask.setTitle(newTask.getTitle());
-            oldTask.setOwner(newTask.getOwner());
-            oldTask.setExecutor(newTask.getExecutor());
-            oldTask.setDescription(newTask.getDescription());
-            oldTask.setStatus(newTask.getStatus());
-        } finally {
-            closeSession();
-        }
+
+        Session session = sessionFactory.getCurrentSession();
+        Task oldTask = session.createQuery("SELECT t FROM Task t WHERE t.id = :id", Task.class)
+                .setParameter("id", newTask.getId())
+                .getSingleResult();
+        oldTask.setTitle(newTask.getTitle());
+        oldTask.setOwner(newTask.getOwner());
+        oldTask.setExecutor(newTask.getExecutor());
+        oldTask.setDescription(newTask.getDescription());
+        oldTask.setStatus(newTask.getStatus());
     }
 
     // удалить задачу
-    @Override
     public void delTask(Long id) {
         if (id == null) {
             throw new TaskNoFound("нельзя удалить задачу - нет идентификатора");
@@ -427,63 +660,25 @@ public class TaskRepoHibernate implements TaskInterface {
             throw new TaskNoFound("не найдена задача с id = " + id);
         }
 
-        try {
-            openSession();
-            session.delete(session.get(Task.class, id));
-        } finally {
-            closeSession();
-        }
+        Session session = sessionFactory.getCurrentSession();
+        session.delete(session.get(Task.class, id));
     }
 
     // удалить все задачи
-    @Override
     public void deleteAllTasks() {
-        try {
-            openSession();
-            session.createQuery("DELETE FROM Task").executeUpdate();
-        } finally {
-            closeSession();
-        }
+        Session session = sessionFactory.getCurrentSession();
+        session.createQuery("DELETE FROM Task").executeUpdate();
     }
 
     // получить список задач через коллекцию
     public List<Task> getAllTasks() {
+        Session session = sessionFactory.getCurrentSession();
         List<Task> tasks = new ArrayList<>();
-        try {
-            openSession();
-            tasks = session.createQuery("SELECT t FROM Task t ORDER BY t.id").getResultList();
-        } finally {
-            closeSession();
-        }
+        tasks = session.createQuery("SELECT t FROM Task t ORDER BY t.id").getResultList();
         if (tasks.size() == 0) {
             return Collections.EMPTY_LIST; // избегаем NullPointerException, никто не сможет изменить, ссылка на один и тот же объект (экономия памяти)
         }
         return Collections.unmodifiableList(tasks); // никто не сможет изменить
-    }
-
-    // создать задачу по данным
-    public Task createTaskByInfo(String title, String owner, String executor, String description, String status) {
-        Task task = new Task();
-        task.setTitle(title);
-        task.setOwner(owner);
-        task.setExecutor(executor);
-        task.setDescription(description);
-        task.setStatus(status);
-
-        return task;
-    }
-
-    // Session и EntityManager - это единица работы, в данном случае на каждую операцию можно открывать и закрывать её, это не сильно затратно по ресурсам
-    // открыть сессию с БД
-    private void openSession() {
-        session = factory.getCurrentSession();
-        session.beginTransaction();
-    }
-
-    // закрыть сессию с БД
-    private void closeSession() {
-        session.getTransaction().commit();
-        session.close();
     }
 }
 
@@ -495,6 +690,8 @@ package com.geekbrains.training.homework.services;
 import com.geekbrains.training.homework.entities.Task;
 import com.geekbrains.training.homework.exceptions.TaskAlreadyExist;
 import com.geekbrains.training.homework.exceptions.TaskNoFound;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -510,6 +707,7 @@ public class TaskService {
     private String delimiter;
     @Value("Repository.csv")
     private String fileName;
+    private static Logger logger = LoggerFactory.getLogger(TaskService.class);
 
     // получить ссылку на репозиторий (неважно, где он находится) - мы пишем только логику, а Spring нам сам инжектит связи
     @Autowired
@@ -518,21 +716,16 @@ public class TaskService {
     @Qualifier(value = "taskRepoHibernate")
     private TaskRepoHibernate taskRepository;
 
-    // описание репозитария
-    public String getNameRepo() {
-        return taskRepository.getNameRepo();
-    }
-
     // проверить, что существует задача с заданным идентификатором
     public void isTaskExist(Long id) {
         try {
             if (taskRepository.isTaskExist(id)) {
-                System.out.println("Задача найдена [id = " + id + "]");
+                logger.info("Задача найдена [id = " + id + "]");
             } else {
-                System.out.println("Задача отсутствует [id = " + id + "]!");
+                logger.info("Задача отсутствует [id = " + id + "]!");
             }
         } catch (TaskNoFound e) {
-            System.out.println(e.getMessage());
+            logger.info(e.getMessage());
         }
     }
 
@@ -542,23 +735,23 @@ public class TaskService {
         try {
             task = taskRepository.findTaskById(id);
             if (task == null) {
-                System.out.println("Задача отсутствует [id = " + id + "]!");
+                logger.info("Задача отсутствует [id = " + id + "]!");
             } else {
-                System.out.println("Задача найдена [id = " + id + "]!");
+                logger.info("Задача найдена [id = " + id + "]!");
             }
         } catch (TaskNoFound e) {
-            System.out.println(e.getMessage());
+            logger.info(e.getMessage());
         }
         return task;
     }
 
     // добавить новую задачу
-    public void addTask(String title, String owner, String executor, String description, String status) {
+    public void addTask(Task task) {
         try {
-            taskRepository.addTask(title, owner, executor, description, status == null ? "CREATED" : status);
-            System.out.println("Задача успешно добавлена [title = " + title + "]");
+            taskRepository.addTask(task);
+            logger.info("Задача успешно добавлена [title = " + task.getTitle() + "]");
         } catch (TaskAlreadyExist | TaskNoFound e) {
-            System.out.println(e.getMessage());
+            logger.info(e.getMessage());
         }
     }
 
@@ -566,9 +759,9 @@ public class TaskService {
     public void editTask(Task newTask) {
         try {
             taskRepository.editTask(newTask);
-            System.out.println("Задача успешно обновлена [id = " + newTask.getId() + "]");
+            logger.info("Задача успешно обновлена [id = " + newTask.getId() + "]");
         } catch (TaskNoFound e) {
-            System.out.println(e.getMessage());
+            logger.info(e.getMessage());
         }
     }
 
@@ -576,9 +769,9 @@ public class TaskService {
     public void delTask(Long id) throws TaskNoFound {
         try {
             taskRepository.delTask(id);
-            System.out.println("Задача успешно удалена [id = " + id + "]");
+            logger.info("Задача успешно удалена [id = " + id + "]");
         } catch (TaskNoFound e) {
-            System.out.println(e.getMessage());
+            logger.info(e.getMessage());
         }
     }
 
@@ -588,25 +781,14 @@ public class TaskService {
     }
 
     // получить список задач через коллекцию
-    public List<Task> getTasks() {
-        return Collections.unmodifiableList(taskRepository.getAllTasks()); // чтобы никто не мог менять список
-    }
-
-    // напечатать список задач
-    public void printList() {
-        System.out.println("СПИСОК ВСЕХ ЗАДАЧ:");
-        for (Task task : getTasks()) {
-            System.out.println(task.toString());
+    public List<Task> getAllTasks() {
+        List<Task> tasks = Collections.EMPTY_LIST;
+        try {
+            tasks = taskRepository.getAllTasks();
+        } catch (Exception e) {
+            logger.info(e.getMessage());
         }
-    }
-
-    // создать задачу по данным
-    public Task createTaskByInfo(String title, String owner, String executor, String description, String status) {
-        return taskRepository.createTaskByInfo(title, owner, executor, description, status);
-    }
-
-    public void close() {
-        taskRepository.close();
+        return tasks;
     }
 }
 
@@ -617,84 +799,79 @@ public class TaskService {
 package com.geekbrains.training.homework;
 import com.geekbrains.training.homework.entities.Task;
 import com.geekbrains.training.homework.services.TaskService;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-public class MainApp {
-    public static void main(String[] args) {
-        // при создании контекста Spring создаёт все бины
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(TaskConfig.class);
-        TaskService taskService = context.getBean("taskService", TaskService.class);
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+// Задача Контроллера: перехватить запрос, посчитать его через уровень сервисов и вернуть пользователю ответ
+@Controller
+@RequestMapping("/tasks")
+public class TaskController {
+    @Autowired
+    TaskService taskService;
 
-        System.out.println("+-------------------------------+");
-        System.out.println("| Создание репозитория          |");
-        System.out.println("+-------------------------------+");
-        System.out.println(taskService.getNameRepo());
-        taskService.printList();
-        System.out.println();
+    // Показать домашнюю страницу ( http://localhost:8189/app/tasks/... - все пути прописываются относительно него )
+    // страница корня ищется по настройкам beans.xml - путь /WEB-INF/templates/ + подставляет index.html
+    @RequestMapping(value = "/", method = RequestMethod.GET)
+    public String showHomePage() {
+        return "index";
+    }
 
-        System.out.println("+-----------------------------+");
-        System.out.println("| Проверка поиска isTaskExist |");
-        System.out.println("+-----------------------------+");
-        taskService.isTaskExist(0L);
-        taskService.isTaskExist(1L);
-        taskService.isTaskExist(null);
-        taskService.isTaskExist(2L);
-        taskService.isTaskExist(888L);
-        System.out.println();
+    // Показать все задачи
+    @RequestMapping(value = "/show", method = RequestMethod.GET)
+    public String showAllTasks(Model model) {
+        List<Task> tasks = taskService.getAllTasks();
+        model.addAttribute("tasks", tasks);
+        return "all_tasks";
+    }
 
-        System.out.println("+------------------------------+");
-        System.out.println("| Проверка поиска findTaskById |");
-        System.out.println("+------------------------------+");
-        taskService.findTaskById(null);
-        taskService.findTaskById(1L);
-        taskService.findTaskById(2L);
-        taskService.findTaskById(888L);
-        taskService.findTaskById(0L);
-        System.out.println();
+    // Добавить новую задачу
+    @GetMapping(value = "/add")
+    public String addNewTask(Model model) {
+        Task task = new Task();
+        model.addAttribute("task", task);
+        return "add";
+    }
 
-        System.out.println("+---------------------+");
-        System.out.println("| Проверка добавления |");
-        System.out.println("+---------------------+");
-        taskService.addTask("Task1", "owner1", "executor1", "Create task 1", null);
-        System.out.println("Повторное добавление такой же записи:");
-        taskService.addTask("Task1", "owner1", "executor1", "Create task 1", null);
-        System.out.println("Добавление title = NULL:");
-        taskService.addTask(null, "owner10", "executor10", "Create task 10", null);
-        System.out.println();
-        taskService.printList();
-        System.out.println();
-
-        System.out.println("+---------------------+");
-        System.out.println("| Проверка обновления |");
-        System.out.println("+---------------------+");
-        Task newTask = null;
-        taskService.editTask(newTask);
-
-        newTask = taskService.findTaskById(1L);
-
-        newTask = taskService.findTaskById(2L);
-        newTask.setTitle("NewTitle1");
-        newTask.setOwner("NewOwner1");
-        newTask.setExecutor("NewExecutor1");
-        newTask.setDescription("NewDescription1");
-        newTask.setStatus(Task.Status.REJECTED.name());
-        taskService.editTask(newTask);
-
-        taskService.editTask(taskService.createTaskByInfo("Task_1", "Owner_1", "Executor_1", "Create task 1", Task.Status.CLOSED.name()));
-        System.out.println();
-        taskService.printList();
-        System.out.println();
-
-        System.out.println("+-------------------+");
-        System.out.println("| Проверка удаления |");
-        System.out.println("+-------------------+");
-        taskService.delTask(null);
-        taskService.delTask(1L);
-        taskService.delTask(2L);
-        System.out.println();
-        taskService.printList();
-
-        taskService.close();
+    // Показать результат добавления новой задачи (тренировка как выводить информацию)
+    // либо можно сразу переключить на страницу показа всех задач
+    @PostMapping(value = "/add_result")
+    public String showAddResult(@ModelAttribute("task") Task task) {
+        taskService.addTask(task);
+        return "add_result";
     }
 }
 
 
+
+
+
+package com.geekbrains.training.homework;
+import java.net.URL;
+import java.security.ProtectionDomain;
+import com.geekbrains.training.homework.services.TaskService;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.webapp.WebAppContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+public class Launcher {
+    // Вшиваем в пакет встроенный web-сервер Jetty
+    // т.е. либо компилируем файл *.war и деплоим его на готовый web-сервер типа Apach Tomcat
+    // либо вшиваем в проект embedded встроенный web-сервер типа Jetty, компилим в *.jar:
+    // - запускаем проект, web-сервер разворачивается, на нём запускается наше приложение
+    // доступ к приложению: http://localhost:8189/app/
+    public static void main(String[] args) throws Exception {
+        Server server = new Server(8189); // на этом порту разворачиваем web-сервер
+
+        ProtectionDomain domain = Launcher.class.getProtectionDomain();
+        URL location = domain.getCodeSource().getLocation();
+
+        WebAppContext webAppContext = new WebAppContext();
+        webAppContext.setContextPath("/app"); // корень приложения
+        webAppContext.setWar(location.toExternalForm());
+
+        server.setHandler(webAppContext);
+        server.start();
+        server.join();
+    }
+}
