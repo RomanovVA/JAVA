@@ -1,0 +1,116 @@
+package com.geekbrains.training.homework1;
+
+import java.util.Arrays;
+
+public class MainApp {
+    // точка входа
+    public static void main(String[] args) {
+
+        // task #1
+        int a = 20, b = 10;
+        System.out.printf("1. Сумма %d+%d=%d - между 10 и 20: %b %n", a, b, a + b, isSumBetween10and20(a, b));
+
+        // task #2
+        checkPositiveOrNegative(-1);
+
+        // test task #3 (1992, 2000 - високосные; 1900, 1800 - не високосный)
+        checkLeapYear(1992);
+
+        // task #4
+        int[] arr = {1, 2, 3, 4, 5};
+        //int[] arr = new int[0];
+        if (arr.length == 0) {
+            System.out.println("4. Задан нулевой размер массива!");
+        } else {
+            int sum = getSumArrayElements(arr);
+            System.out.println("4. Сумма элементов массива " + Arrays.toString(arr) + " = " + sum);
+        }
+
+        // task #5
+        fillIntArray();
+
+        // task #6
+        System.out.println("6. Создать диагональную единичную матрицу заданного размера");
+        int arrLength = 7;
+        if (arrLength == 0) {
+            System.out.println(" - задан нулевой размер матрицы - построить невозможно!");
+        } else {
+            int[][] arrMatrix = getMatrix(arrLength);
+            for (int i = 0; i < arrLength; i++) {
+                for (int j = 0; j < arrLength; j++) {
+                    System.out.print(arrMatrix[i][j] + " ");
+                }
+                System.out.println();
+            }
+        }
+
+        // task #7
+        //int[] myArr = new int[0];
+        int[] myArr = {-2, 4, 0, -20, 15, -25, -8};
+        if (myArr.length == 0) {
+            System.out.println("7. Массив нулевой длины - нельзя определить максимальный элемент!");
+        } else {
+            int maxElement = getMaxElementOfArray(myArr);
+            System.out.println("7. Максимальный элемент массива " + Arrays.toString(myArr) + " = " + maxElement);
+        }
+    }
+
+    // методы
+    // task #1
+    public static boolean isSumBetween10and20(int a, int b) {
+        int sum = a + b;
+        return (sum >= 10 && sum <= 20);
+    }
+
+    // task #2
+    public static void checkPositiveOrNegative(int a) {
+        System.out.println("2. Число " + a + " - " + ((a < 0) ? "отрицательное" : "положительное"));
+    }
+
+    // task #3
+    public static void checkLeapYear(int year) {
+        if (year % 4 == 0 && year % 100 != 0 || year % 400 == 0) {
+            System.out.printf("3. %d г. - високосный %n", year);
+        } else {
+            System.out.printf("3. %d г. - НЕ високосный %n", year);
+        }
+    }
+
+    // task #4
+    public static int getSumArrayElements(int[] inArr) {
+        int sum = 0;
+        for (int valueArrayElement : inArr) {
+            sum += valueArrayElement;
+        }
+        return sum;
+    }
+
+    // task #5
+    public static void fillIntArray() {
+        int[] arr = new int[8];
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = 3 * i + 1;
+        }
+        System.out.println("5. " + Arrays.toString(arr));
+    }
+
+    // task #6 - диагональная единичная матрица
+    public static int[][] getMatrix(int arrLength) {
+        int arr[][] = new int[arrLength][arrLength];
+        for (int i = 0; i < arrLength; i++) {
+            arr[i][i] = 1;
+        }
+        return arr;
+    }
+
+    // task #7
+    public static int getMaxElementOfArray(int[] inArr) {
+        int maxElement = inArr[0];
+        for (int i = 0; i < inArr.length; i++) {
+            if (inArr[i] > maxElement) {
+                maxElement = inArr[i];
+            }
+        }
+        return maxElement;
+    }
+}
