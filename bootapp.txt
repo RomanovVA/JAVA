@@ -1,0 +1,904 @@
+﻿///////////////////////////////////////////////////////////////////////////////////////
+//  П Р О Е К Т   (Spring Boot + Hibernate + H2)
+///////////////////////////////////////////////////////////////////////////////////////
+
+POM.XML:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.2.1.RELEASE</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+
+	<groupId>com.geekbrains</groupId>
+	<artifactId>boot-app</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>boot-app</name>
+	<description>Demo project for Spring Boot</description>
+
+	<properties>
+		<java.version>1.8</java.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.200</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.junit.vintage</groupId>
+					<artifactId>junit-vintage-engine</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<version>6.0.1</version>
+				<configuration>
+					<configFiles>src/main/resources/flyway.conf</configFiles>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
+
+
+
+
+--------------------------------------------------------------------------------------------
+RESOURCES:
+--------------------------------------------------------------------------------------------
+
+application.properties
+
+# настройки web-приложения
+
+# порт для запуска и путь для корня
+server.port=8189
+server.servlet.context-path=/app
+
+# настройки стартера
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQL95Dialect
+#spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect
+spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false
+
+# bean для подключения к БД
+spring.datasource.driver-class-name=org.h2.Driver
+
+spring.thymeleaf.encoding=UTF-8
+
+flyway.locations=classpath:resources/db/migration
+
+
+
+
+
+private.properties
+
+# bean для подключения к БД
+spring.datasource.url=jdbc:h2:file:C:/Java/mydatabase;MODE=PostgreSQL
+spring.datasource.username=sa
+
+
+
+
+
+flyway.conf
+
+flyway.url=jdbc:h2:file:C:/Java/mydatabase;MODE=PostgreSQL
+flyway.user=sa
+
+
+
+
+
+v1__initialize
+
+create table tasks (id bigserial, title varchar(255), owner varchar(255), executor varchar(255), description varchar(255), status varchar(255), primary key(id));
+
+insert into tasks (id, title, owner, executor, description, status) values ( 2, 'Task2',  'Owner2',  'Executor2',  'Description2',  'CREATED');
+insert into tasks (id, title, owner, executor, description, status) values ( 4, 'Task4',  'Owner4',  'Executor4',  'Description4',  'IN_WORK');
+insert into tasks (id, title, owner, executor, description, status) values ( 6, 'Task6',  'Owner6',  'Executor6',  'Description6',  'CLOSED');
+insert into tasks (id, title, owner, executor, description, status) values ( 8, 'Task8',  'Owner8',  'Executor8',  'Description8',  'REJECTED');
+insert into tasks (id, title, owner, executor, description, status) values (10, 'Task10', 'Owner10', 'Executor10', 'Description10', 'SUSPENDED');
+insert into tasks (id, title, owner, executor, description, status) values (12, 'Task12', 'Owner12', 'Executor12', 'Description12', 'CREATED');
+insert into tasks (id, title, owner, executor, description, status) values (14, 'Task14', 'Owner14', 'Executor14', 'Description14', 'IN_WORK');
+insert into tasks (id, title, owner, executor, description, status) values (16, 'Task16', 'Owner16', 'Executor16', 'Description16', 'CLOSED');
+insert into tasks (id, title, owner, executor, description, status) values (18, 'Task18', 'Owner18', 'Executor18', 'Description18', 'REJECTED');
+insert into tasks (id, title, owner, executor, description, status) values (20, 'Task20', 'Owner20', 'Executor20', 'Description20', 'SUSPENDED');
+insert into tasks (id, title, owner, executor, description, status) values (22, 'Task22', 'Owner20', 'Executor20', 'Description20', 'SUSPENDED');
+
+
+
+
+
+main.css
+
+h1 { color: #2e82c3; }
+h2 { color: #2e82c3; }
+
+table {width: 50%; border-collapse: separate; border-spacing: 4px;}
+table thead tr {color: #ffffff; font-weight: bold;}
+table thead tr td {border-radius: 4px 4px 0 0; background: #2e82c3;}
+table tbody tr td {border: 1px solid #2e82c3; border-radius: 4px; background: #cbdfef;}
+table tbody tr td:hover {background: #a2c3dd; transition-duration: 0.2s;}
+
+
+
+
+
+index.html
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/main.css}">
+    <title>Spring Boot</title>
+</head>
+
+<body>
+<h1>СПИСОК ЗАДАЧ</h1>
+<form th:action="@{/tasks/}" method="GET">
+    <h2>Фильтры:</h2>
+    <table>
+        <thead>
+        <tr>
+            <td>Executor</td>
+            <td>Status</td>
+            <td></td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td><input name="f_executor"/></td>
+            <td><select name="f_status">
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}" th:label="${s}"/>
+            </select>
+            </td>
+            <td>
+                <button type="submit" class="btn btn-primary">Применить фильтр</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</form>
+<br/><br/>
+
+<table>
+    <thead>
+    <tr>
+        <td>ID</td>
+        <td>Title</td>
+        <td>Owner</td>
+        <td>Executor</td>
+        <td>Description</td>
+        <td>Status</td>
+        <td colspan="2"></td>
+    </tr>
+    </thead>
+    <tbody>
+    <!--/*@thymesVar id="tasks" type="java.util.List<com.geekbrains.bootapp.entities.Task>"*/-->
+    <tr th:each="t : ${tasks}">
+        <td th:text="${t.id}"></td>
+        <td th:text="${t.title}"></td>
+        <td th:text="${t.owner}"></td>
+        <td th:text="${t.executor}"></td>
+        <td th:text="${t.description}"></td>
+        <td th:text="${t.status}"></td>
+        <td><a th:href="@{'/tasks/info/' + ${t.id}}">Просмотр</a></td>
+        <td><a th:href="@{'/tasks/edit/' + ${t.id}}">Изменить</a></td>
+    </tr>
+    </tbody>
+</table>
+<br/><br/>
+<a th:href="@{/tasks/add}">Добавить новую задачу</a>
+</body>
+</html>
+
+
+
+
+
+add.html
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/main.css}">
+</head>
+<body>
+<!--/*@thymesVar id="task" type="com.geekbrains.bootapp.entities.Task"*/-->
+<form th:action="@{/tasks/add/}" th:object="${task}" method="POST">
+    <h1>Информация для новой задачи:</h1>
+    <table>
+        <thead>
+        <tr>
+            <td>Поле</td>
+            <td>Значение</td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Title</td>
+            <td><input th:field="*{title}"/></td>
+        </tr>
+        <tr>
+            <td>Owner</td>
+            <td><input th:field="*{owner}"/></td>
+        </tr>
+        <tr>
+            <td>Executor</td>
+            <td><input th:field="*{executor}"/></td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td><input th:field="*{description}"/></td>
+        </tr>
+        <tr>
+            <td>Status</td>
+            <td><select th:field="*{status}">
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}" th:label="${s}"/>
+            </select>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <br/><br/>
+    <input type="submit" value="Сохранить"/>
+    <br/><br/>
+</form>
+<a th:href="@{/tasks/}">на главную страницу</a>
+</body>
+</html>
+
+
+
+
+
+edit.html
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/main.css}">
+</head>
+<body>
+<!--/*@thymesVar id="task" type="com.geekbrains.bootapp.entities.Task"*/-->
+<form th:action="@{/tasks/edit/}" th:object="${task}" method="POST">
+    <h1>Просмотр задачи:</h1>
+    <table>
+        <thead>
+        <tr>
+            <td>Поле</td>
+            <td>Значение</td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Id</td>
+            <td><input readonly th:field="*{id}"/></td>
+        </tr>
+        <tr>
+            <td>Title</td>
+            <td><input th:field="*{title}"/></td>
+        </tr>
+        <tr>
+            <td>Owner</td>
+            <td><input th:field="*{owner}"/></td>
+        </tr>
+        <tr>
+            <td>Executor</td>
+            <td><input th:field="*{executor}"/></td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td><input th:field="*{description}"/></td>
+        </tr>
+        <tr>
+            <td>Status</td>
+            <td><select th:field="*{status}">
+                <option th:each="s : ${statuses}" th:value="${s}" th:text="${s}" th:label="${s}"/>
+            </select></td>
+        </tr>
+        </tbody>
+    </table>
+    <br/><br/>
+    <input type="submit" value="Сохранить изменения"/>
+    <br/><br/>
+</form>
+<a th:href="@{/tasks/}">на главную страницу</a>
+</body>
+</html>
+
+
+
+
+
+info.html
+
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/main.css}">
+</head>
+<body>
+<!--/*@thymesVar id="task" type="com.geekbrains.bootapp.entities.Task"*/-->
+<form th:action="@{/tasks/delete/}" th:object="${task}" method="POST">
+    <h1>Просмотр задачи:</h1>
+    <table>
+        <thead>
+        <tr>
+            <td>Поле</td>
+            <td>Значение</td>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Id</td>
+            <td><input readonly th:field="*{id}"/></td>
+        </tr>
+        <tr>
+            <td>Title</td>
+            <td><input disabled th:field="*{title}"/></td>
+        </tr>
+        <tr>
+            <td>Owner</td>
+            <td><input disabled th:field="*{owner}"/></td>
+        </tr>
+        <tr>
+            <td>Executor</td>
+            <td><input disabled th:field="*{executor}"/></td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td><input disabled th:field="*{description}"/></td>
+        </tr>
+        <tr>
+            <td>Status</td>
+            <td><input disabled th:field="*{status}"/></td>
+        </tr>
+        </tbody>
+    </table>
+    <br/><br/>
+    <input type="submit" value="Удалить"/>
+    <br/><br/>
+</form>
+<a th:href="@{/tasks/}">на главную страницу</a>
+</body>
+</html>
+
+
+
+
+--------------------------------------------------------------------------------------------
+JAVA:
+--------------------------------------------------------------------------------------------
+
+package com.geekbrains.bootapp.configs;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration  // конфигурационный файл приложения
+@PropertySource("classpath:private.properties") // кроме файла properties есть ещё защищённый файл private с информацией для подключения, данные можно тянуть из обоих файлов
+@ComponentScan("com.geekbrains.bootapp")  // папка, в которой искать компоненты
+public class AppConfig implements WebMvcConfigurer {
+}
+
+
+
+
+
+package com.geekbrains.bootapp;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+@SpringBootApplication
+public class BootAppApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(BootAppApplication.class, args);
+    }
+}
+
+
+
+
+
+package com.geekbrains.bootapp.exceptions;
+public class TaskAlreadyExist extends RuntimeException {
+    private Long id;
+    private String title;
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public TaskAlreadyExist(Long id, String title) {
+        super("Ошибка: такая запись [id = " + id + ", title = " + title + "] уже существует!");
+        this.id = id;
+        this.title = title;
+    }
+}
+
+
+
+
+
+package com.geekbrains.bootapp.exceptions;
+public class TaskNoFound extends RuntimeException {
+    public TaskNoFound(String message) {
+        super("Ошибка: " + message + "!");
+    }
+}
+
+
+
+
+
+package com.geekbrains.bootapp.entities;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import javax.persistence.*;
+import java.io.Serializable;
+@Entity                 // по контексту класса будет создана таблица, а по контекстам перменных - поля таблицы
+@Table(name = "tasks")  // название связанной таблицы
+@Data                   // для сущности будут сгенерены стандартные getter-ы и setter-ы
+@NoArgsConstructor      // генерация конструктора без параметров
+public class Task implements Serializable { // для web-уровня
+    public enum Status {
+        CREATED("Создана"), IN_WORK("В работе"), CLOSED("Закрыта"), REJECTED("Отклонена"), SUSPENDED("Приостановлена");;
+        private String rusTitle;
+
+        Status(String rusTitle) {
+            this.rusTitle = rusTitle;
+        }
+
+        public String getRusTitle() {
+            return rusTitle;
+        }
+    }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // за генерацию id отвечает БД
+    @Column(name = "id")
+    private Long id; // при создании = null, т.к. через конструктор не заполняем (поэтому тип - обёртка Long, а не примитив)
+    @Column(name = "title")
+    private String title;
+    @Column(name = "owner")
+    private String owner;
+    @Column(name = "executor")
+    private String executor;
+    @Column(name = "description")
+    private String description;
+    @Column(name = "status")
+    private String status;
+
+    @Override
+    public String toString() {
+        return String.format("Задача [id = %d, title = %s, owher = %s, executor = %s, description = %s, status = %s]", id, title, owner, executor, description, status);
+    }
+
+    // если переопределяем equals, то необходимо также синхронно переопределить hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || !(o instanceof Task)) {
+            return false;
+        }
+        if (this == o) {
+            return true;
+        }
+        Task another = (Task) o;
+        return this.id.equals(another.id) && this.title.equals(another.title);
+    }
+
+    // если объекты равны по equals, то их hashCode тоже должны быть равны
+    // если объекты НЕ равны по equals, то их hashCode желательно тоже НЕ должны совпадать
+    @Override
+    public int hashCode() {
+        return id.intValue() + title.hashCode();
+    }
+}
+
+
+
+
+
+package com.geekbrains.bootapp.repositories;
+import com.geekbrains.bootapp.entities.Task;
+import com.geekbrains.bootapp.exceptions.TaskNoFound;
+import org.springframework.stereotype.Repository;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+@Repository     // Наследник аннотации Component. Сканируется Spring и считается Bean-ом
+@Transactional  // В рамках каждого метода в классе будет открыта одна транзакция (Session)
+public class TaskRepository {
+    // используя EntityManager - можно менять Hibernate на другую библиотеку, при этом код остаётся тем же самым
+    // НО только в Session есть доп.возможности Hibernate
+    // EntityManager - аналог Session, единица работы (Session extends EntityManager)
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // конструктор - дефолтный, для его инициализации есть специальная аннотация PostConstruct
+    // т.е. выполнение после того, как Spring построит Bean и создаст все привязки
+    public TaskRepository() {
+    }
+
+    // проверить, что существует задача с заданным идентификатором
+    public boolean isTaskExist(Long id) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
+        }
+
+        Task task = entityManager.find(Task.class, id);
+        return task != null;
+    }
+
+    // найти задачу по идентификатору
+    public Task findTaskById(Long id) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя найти задачу - нет идентификатора");
+        }
+        Task task = entityManager.find(Task.class, id);
+        return task;
+    }
+
+    // добавить новую задачу
+    public void addTask(Task task) {
+        if (task == null) {
+            throw new TaskNoFound("нельзя добавить задачу - передан пустой объект");
+        }
+        entityManager.persist(task);
+    }
+
+    // изменить задачу (указываем в sql-запросе не имя таблицы, а имя класса)
+    public void editTask(Task newTask) {
+        if (newTask == null) {
+            throw new TaskNoFound("нельзя редактировать задачу - объект пустой");
+        }
+        if (newTask.getId() == null) {
+            throw new TaskNoFound("нельзя редактировать задачу - нет идентификатора");
+        }
+        if (newTask.getTitle() == null) {
+            throw new TaskNoFound("нельзя редактировать задачу - нет названия");
+        }
+        if (!isTaskExist(newTask.getId())) {
+            throw new TaskNoFound("не найдена задача с id = " + newTask.getId());
+        }
+
+        Task oldTask = entityManager.find(Task.class, newTask.getId());
+
+        oldTask.setTitle(newTask.getTitle());
+        oldTask.setOwner(newTask.getOwner());
+        oldTask.setExecutor(newTask.getExecutor());
+        oldTask.setDescription(newTask.getDescription());
+        oldTask.setStatus(newTask.getStatus());
+
+        entityManager.merge(oldTask);
+    }
+
+    // удалить задачу
+    public void delTask(Long id) {
+        if (id == null) {
+            throw new TaskNoFound("нельзя удалить задачу - нет идентификатора");
+        }
+        if (!isTaskExist(id)) {
+            throw new TaskNoFound("не найдена задача с id = " + id);
+        }
+
+        Task task = entityManager.find(Task.class, id);
+        entityManager.remove(task);
+    }
+
+    // удалить все задачи
+    public void deleteAllTasks() {
+        entityManager.clear();
+    }
+
+    // получить список задач по фильтру
+    public List<Task> getFilteringTasks(Task filter) {
+        if (filter == null) {
+            return getAllTasks();
+        }
+        boolean isExecutor = (filter.getExecutor() != null && !"".equals(filter.getExecutor()));
+        boolean isStatus = (filter.getStatus() != null && !"".equals(filter.getStatus()));
+
+        String sql = "SELECT t FROM Task t";
+        if (isExecutor) {
+            sql = sql + " WHERE t.executor = '" + filter.getExecutor() + "'";
+        }
+
+        if (isStatus) {
+            if (isExecutor) {
+                sql = sql + " AND t.status = '" + filter.getStatus() + "'";
+            } else {
+                sql = sql + " WHERE t.status = '" + filter.getStatus() + "'";
+            }
+        }
+
+        List<Task> tasks = new ArrayList<>();
+        tasks = entityManager.createQuery(sql, Task.class).getResultList();
+        if (tasks.size() == 0) {
+            return Collections.EMPTY_LIST; // избегаем NullPointerException, никто не сможет изменить, ссылка на один и тот же объект (экономия памяти)
+        }
+        return Collections.unmodifiableList(tasks); // никто не сможет изменить
+    }
+
+    // получить список всех задач через коллекцию
+    public List<Task> getAllTasks() {
+        List<Task> tasks = new ArrayList<>();
+        tasks = entityManager.createQuery("SELECT t FROM Task t ORDER BY t.id").getResultList();
+        if (tasks.size() == 0) {
+            return Collections.EMPTY_LIST; // избегаем NullPointerException, никто не сможет изменить, ссылка на один и тот же объект (экономия памяти)
+        }
+        return Collections.unmodifiableList(tasks); // никто не сможет изменить
+    }
+
+    // получить список статусов
+    public String[] getAllStatuses(boolean showNullPick) {
+        int arraySize = Task.Status.values().length;
+        int i = 0;
+        if (showNullPick) {
+            arraySize++;
+        }
+
+        String[] statuses = new String[arraySize];
+        if (showNullPick) {
+            statuses[0] = ""; // возможность показать все задачи без фильтра по статусу
+            i++;
+        }
+        for (Task.Status s : Task.Status.values()) {
+            statuses[i] = s.name();
+            i++;
+        }
+        return statuses;
+    }
+}
+
+
+
+
+
+package com.geekbrains.bootapp.services;
+import com.geekbrains.bootapp.entities.Task;
+import com.geekbrains.bootapp.exceptions.TaskNoFound;
+import com.geekbrains.bootapp.repositories.TaskRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import java.util.List;
+@Service  // Наследник аннотации Component. Сканируется Spring и считается бином
+public class TaskService {
+    // не стоит делать преднастройку переменных в конструкторе, т.к. этим уже занимается Spring (можно ему помешать)
+    // сюда удобно инжектить что-нибудь из конфигурационных файлов
+    @Value(";")
+    private String delimiter;
+    @Value("Repository.csv")
+    private String fileName;
+
+    // если будет несколько репозиториев - защита от неоднозначности "expected single matching bean but found 2 (или больше)"
+    // для одного репозитория Qualifier не обязателен
+    @Qualifier(value = "taskRepository")
+    private TaskRepository taskRepository;
+
+    @Autowired
+    // получить ссылку на репозиторий (неважно, где он находится) - мы пишем только логику, а Spring нам сам инжектит связи
+    public void setTaskRepository(TaskRepository taskRepository) {
+        this.taskRepository = taskRepository;
+    }
+
+    // проверить, что существует задача с заданным идентификатором
+    public void isTaskExist(Long id) {
+        taskRepository.isTaskExist(id);
+    }
+
+    // найти задачу по идентификатору
+    public Task findTaskById(Long id) {
+        return taskRepository.findTaskById(id);
+    }
+
+    // добавить новую задачу
+    public void addTask(Task task) {
+        taskRepository.addTask(task);
+    }
+
+    // изменить задачу
+    public void editTask(Task newTask) {
+        taskRepository.editTask(newTask);
+    }
+
+    // удалить задачу
+    public void delTask(Long id) throws TaskNoFound {
+        taskRepository.delTask(id);
+    }
+
+    // удалить все задачи
+    public void deleteAll() {
+        taskRepository.deleteAllTasks();
+    }
+
+    // получить список задач по фильтру
+    public List<Task> getFilteringTasks(Task task) {
+        return taskRepository.getFilteringTasks(task);
+    }
+
+    // получить список задач через коллекцию
+    public List<Task> getAllTasks() {
+        return taskRepository.getAllTasks();
+    }
+
+    // получить список статусов
+    public String[] getAllStatuses(boolean showNullPick) {
+        return taskRepository.getAllStatuses(showNullPick);
+    }
+}
+
+
+
+
+
+package com.geekbrains.bootapp.controllers;
+import com.geekbrains.bootapp.entities.Task;
+import com.geekbrains.bootapp.services.TaskService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
+@Controller
+@RequestMapping("/tasks")
+public class MainController {
+    private TaskService taskService;
+
+    @Autowired
+    public void setTaskService(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
+    // корень
+    // http://localhost:8189/app/tasks/
+    @GetMapping("/")
+    public String index(Model model, @RequestParam Map<String, String> params) {
+        String f_executor = params.get("f_executor");
+        String f_status = params.get("f_status");
+
+        Task filter = new Task(); // т.к. поиск может быть по любому атрибуту - task и будет шаблоном для фильтра + уже нужные типы полей
+        filter.setExecutor(params.get("f_executor"));
+        filter.setStatus(params.get("f_status"));
+        String[] statuses = taskService.getAllStatuses(true);
+
+        List<Task> tasks = taskService.getFilteringTasks(filter);
+        model.addAttribute("tasks", tasks);
+        model.addAttribute("statuses", statuses);
+        return "index";
+    }
+
+    // добавить новую задачу
+    // http://localhost:8189/app/tasks/add/
+    @GetMapping(value = "/add")
+    public String addNewTask(Model model) {
+        Task task = new Task();
+        String[] statuses = taskService.getAllStatuses(false);
+        model.addAttribute("task", task);
+        model.addAttribute("statuses", statuses);
+        return "add";
+    }
+
+    // сохранить добавленную задачу
+    @PostMapping(value = "/add")
+    public String saveNewTask(@ModelAttribute(name = "task") @Valid Task task) {
+        taskService.addTask(task);
+        return "redirect:/tasks/";
+    }
+
+    // удалить задачу
+    @PostMapping(value = "/delete")
+    public String deleteTask(@ModelAttribute(name = "task") @Valid Task task) {
+        taskService.delTask(task.getId());
+        return "redirect:/tasks/";
+    }
+
+    // редактировать задачу
+    // http://localhost:8189/app/tasks/edit/1/
+    @GetMapping(value = "/edit/{id}")
+    public String editTaskInfo(Model model, @PathVariable(name = "id") Long id) {
+        Task task = taskService.findTaskById(id);
+        String[] statuses = taskService.getAllStatuses(false);
+        model.addAttribute("task", task);
+        model.addAttribute("statuses", statuses);
+        return "edit";
+    }
+
+    // сохранить отредактированную задачу
+    @PostMapping(value = "/edit")
+    public String saveEditTask(@ModelAttribute(name = "task") @Valid Task task) {
+        taskService.editTask(task);
+        return "redirect:/tasks/";
+    }
+
+    // показать информацию по задаче
+    // http://localhost:8189/app/tasks/info/1/
+    @GetMapping(value = "/info/{id}")
+    public String showTaskInfo(Model model, @PathVariable(name = "id") Long id) {
+        Task task = taskService.findTaskById(id);
+        model.addAttribute("task", task);
+        return "info";
+    }
+}
