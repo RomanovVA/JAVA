@@ -594,6 +594,9 @@ public class TaskService {
         this.taskRepository = taskRepository;
     }
 
+    public String[] statuses_with_null_pick = getAllStatuses(true);
+    public String[] statuses = getAllStatuses(false);
+
     // проверить, что существует задача с заданным идентификатором
     public boolean isTaskExist(Long id) {
         return taskRepository.existsById(id);
@@ -645,7 +648,7 @@ public class TaskService {
     }
 
     // получить список статусов
-    public String[] getAllStatuses(boolean showNullPick) {
+    private String[] getAllStatuses(boolean showNullPick) {
         int arraySize = Task.Status.values().length;
         int i = 0;
         if (showNullPick) {
@@ -753,10 +756,8 @@ public class MainController {
         Specification<Task> spec = bs.build(filter);
         Page<Task> tasksPage = taskService.getAllTasks(spec, PageRequest.of(pageNumber.intValue() - 1, tasksPerPage, Sort.Direction.ASC, "id"));
 
-        String[] statuses = taskService.getAllStatuses(true);
-
         model.addAttribute("tasksPage", tasksPage);
-        model.addAttribute("statuses", statuses);
+        model.addAttribute("statuses", taskService.statuses_with_null_pick);
         return "index";
     }
 
@@ -765,9 +766,8 @@ public class MainController {
     @GetMapping(value = "/add")
     public String addNewTask(Model model) {
         Task task = new Task();
-        String[] statuses = taskService.getAllStatuses(false);
         model.addAttribute("task", task);
-        model.addAttribute("statuses", statuses);
+        model.addAttribute("statuses", taskService.statuses);
         return "add";
     }
 
@@ -790,9 +790,8 @@ public class MainController {
     @GetMapping(value = "/edit/{id}")
     public String editTaskInfo(Model model, @PathVariable(name = "id") Long id) {
         Task task = taskService.findTaskById(id);
-        String[] statuses = taskService.getAllStatuses(false);
         model.addAttribute("task", task);
-        model.addAttribute("statuses", statuses);
+        model.addAttribute("statuses", taskService.statuses);
         return "edit";
     }
 
