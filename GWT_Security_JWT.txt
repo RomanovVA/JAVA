@@ -1,0 +1,1432 @@
+﻿///////////////////////////////////////////////////////////////////////////////////////
+//  П Р О Е К Т   GWT + Spring Security + JWT
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  COMMON
+///////////////////////////////////////////////////////////////////////////////////////
+
+public class ErrorDto {
+    private int statusCode;
+    private String message;
+
+    public ErrorDto(int statusCode, String message) {
+        this.statusCode = statusCode;
+        this.message = message;
+    }
+
+    public ErrorDto() {
+    }
+
+    public int getStatusCode() { return statusCode; }
+    public void setStatusCode(int statusCode) { this.statusCode = statusCode; }
+
+    public String getMessage() { return message; }
+    public void setMessage(String message) { this.message = message; }
+}
+
+
+
+
+
+public class JwtAuthRequestDto {
+    private String username;
+    private String password;
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+
+    public void setPassword(String password) { this.password = password; }
+
+    public JwtAuthRequestDto() { }
+
+    public JwtAuthRequestDto(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+}
+
+
+
+
+
+public class JwtAuthResponseDto {
+    private String token;
+
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
+
+    public JwtAuthResponseDto() { }
+
+    public JwtAuthResponseDto(String token) {
+        this.token = token;
+    }
+}
+
+
+
+
+
+// Статусы задач
+public class StatusDto {
+    private Long id;
+    private String title;
+    private List<StatusDto> tasks;
+
+    // Геттеры
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public List<StatusDto> getItems() { return tasks; }
+
+    // Сеттеры
+    public void setId(Long id) { this.id = id; }
+    public void setTitle(String title) { this.title = title; }
+    public void setItems(List<StatusDto> items) { this.tasks = items; }
+
+    public StatusDto() { }
+
+    public StatusDto(Long id, String title) {
+        this.id = id;
+        this.title = title;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < tasks.size(); i++) {
+            out.append(tasks.get(i).toString());
+        }
+        return out.toString();
+    }
+}
+
+
+
+
+
+public class TaskDto {
+    private Long id;
+    private String title;
+    private String owner;
+    private String executor;
+    private String description;
+    private String status;
+
+    public TaskDto() {}
+
+    public TaskDto(Long id, String title, String owner, String executor, String description) {
+        this.id = id;
+        this.title = title;
+        this.owner = owner;
+        this.executor = executor;
+        this.description = description;
+    }
+
+    // Геттеры
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public String getOwner() { return owner; }
+    public String getExecutor() { return executor; }
+    public String getDescription() { return description; }
+    public String getStatus() { return status; }
+
+    // Сеттеры
+    public void setId(Long id) { this.id = id; }
+    public void setTitle(String title) { this.title = title; }
+    public void setOwner(String owner) { this.owner = owner; }
+    public void setExecutor(String executor) { this.executor = executor; }
+    public void setDescription(String description) {  this.description = description; }
+    public void setStatus(String status) {  this.status = status; }
+}
+
+
+
+
+
+public class UserDto {
+	private String username;
+	private String password;
+
+	public String getUsername() { return username; }
+	public String getPassword() { return password; }
+
+	public void setUsername(String username) { this.username = username; }
+	public void setPassword(String password) { this.password = password; }
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  GWT
+///////////////////////////////////////////////////////////////////////////////////////
+
+public class LoginFormTasks extends Composite {
+    @UiField
+    FormPanel form;
+    @UiField
+    TextBox textUsername;
+    @UiField
+    TextBox textPassword;
+
+    @UiTemplate("LoginForm.ui.xml")
+    interface LoginFormBinder extends UiBinder<Widget, LoginFormTasks> {
+    }
+
+    private TasksTableAdminWidget tasksTableAdminWidget;
+    private TasksTableUserWidget tasksTableUserWidget;
+    private TabLayoutPanel tabPanel;
+
+    private static LoginFormTasks.LoginFormBinder uiBinder = GWT.create(LoginFormTasks.LoginFormBinder.class);
+
+    public LoginFormTasks(TabLayoutPanel tabPanel, TasksTableAdminWidget tasksTableAdminWidget, TasksTableUserWidget tasksTableUserWidget) {
+        this.initWidget(uiBinder.createAndBindUi(this));
+        this.form.setAction("localhost:8189/gwt-rest/authenticateTheUser");
+        this.tasksTableAdminWidget = tasksTableAdminWidget;
+        this.tasksTableUserWidget = tasksTableUserWidget;
+        this.tabPanel = tabPanel;
+    }
+
+    @UiHandler("form")
+    public void onSubmit(FormPanel.SubmitEvent event) {
+    }
+
+    @UiHandler("form")
+    public void onSubmitComplete(FormPanel.SubmitCompleteEvent event) {
+        Window.alert(event.getResults());
+    }
+
+    @UiHandler("btnSubmit")
+    public void submitClick(ClickEvent event) {
+        JwtAuthRequestDto jwtAuthRequestDto = new JwtAuthRequestDto(textUsername.getValue(), textPassword.getValue());
+        AuthClient authClient = GWT.create(AuthClient.class);
+        authClient.authenticate(jwtAuthRequestDto, new MethodCallback<JwtAuthResponseDto>() {
+            @Override
+            public void onFailure(Method method, Throwable throwable) {
+                GWT.log(method.getResponse().getText());
+            }
+
+            @Override
+            public void onSuccess(Method method, JwtAuthResponseDto jwtAuthResponseDto) {
+                GWT.log(jwtAuthResponseDto.getToken());
+                Storage.getLocalStorageIfSupported().setItem("jwt", "Bearer " +  jwtAuthResponseDto.getToken());
+
+                if (textUsername.getValue().equals("admin")) {
+                    tasksTableAdminWidget.refresh();
+                    tabPanel.selectTab(1);
+                } else {
+                    tasksTableUserWidget.refresh();
+                    tabPanel.selectTab(2);
+                }
+            }
+        });
+    }
+}
+
+
+
+
+
+LoginForm.ui.xml :
+
+<ui:UiBinder xmlns:ui='urn:ui:com.google.gwt.uibinder'
+             xmlns:g='urn:import:com.google.gwt.user.client.ui'>
+
+    <g:DecoratorPanel>
+        <g:FormPanel ui:field="form" method="POST">
+            <g:VerticalPanel spacing="10">
+                <g:HorizontalPanel>
+                    <g:Label text="Username:" width="100px"/>
+                    <g:TextBox name="username" ui:field="textUsername" width="200px"/>
+                </g:HorizontalPanel>
+                <g:HorizontalPanel>
+                    <g:Label text="Password:" width="100px"/>
+                    <g:TextBox name="password" ui:field="textPassword" width="200px"/>
+                </g:HorizontalPanel>
+                <g:Button ui:field="btnSubmit">Войти</g:Button>
+            </g:VerticalPanel>
+        </g:FormPanel>
+    </g:DecoratorPanel>
+</ui:UiBinder>
+
+
+
+
+
+public interface AuthClient extends RestService {
+    @POST
+    @Path("http://localhost:8189/gwt-rest/authenticate")
+    void authenticate(@BeanParam() JwtAuthRequestDto authRequest, MethodCallback<JwtAuthResponseDto> result);
+}
+
+
+
+
+@Path("/api/v1/statuses")
+public interface StatusClient {
+    @GET
+    void getAll(@HeaderParam("Authorization") String token, MethodCallback<List<StatusDto>> statuses);
+}
+
+
+
+
+
+@Path("/api/v1/tasks")
+public interface TasksClient extends RestService {
+    @GET
+    void getAll(@HeaderParam("Authorization") String token, MethodCallback<List<TaskDto>> tasks);
+
+    @DELETE
+    @Path("/{id}")
+    void delete(@HeaderParam("Authorization") String token, @PathParam("id") String id, MethodCallback<Void> result);
+
+    @GET
+    @Path("/{id}")
+    void sendDemoParams(@HeaderParam("Authorization") String token, MethodCallback<TaskDto> result);
+
+    @POST
+    void save(@HeaderParam("Authorization") String token, @BeanParam() TaskDto taskDto, MethodCallback<Void> result);
+}
+
+
+
+
+
+public class AddTaskFormWidget extends Composite {
+    @UiField
+    FormPanel form;
+
+    @UiField
+    TextBox titleText;
+    @UiField
+    TextBox ownerText;
+    @UiField
+    TextBox executorText;
+    @UiField
+    TextBox descriptionText;
+
+    private TasksTableAdminWidget tasksTableAdminWidget;
+
+    @UiTemplate("AddTaskForm.ui.xml")
+    interface AddTaskFormBinder extends UiBinder<Widget, AddTaskFormWidget> {
+    }
+
+    private static AddTaskFormWidget.AddTaskFormBinder uiBinder = GWT.create(AddTaskFormWidget.AddTaskFormBinder.class);
+
+    public AddTaskFormWidget(TasksTableAdminWidget tasksTableAdminWidget) {
+        this.initWidget(uiBinder.createAndBindUi(this));
+        this.form.setAction(Defaults.getServiceRoot().concat("tasks"));
+        this.tasksTableAdminWidget = tasksTableAdminWidget;
+    }
+
+    @UiHandler("btnSubmit")
+    public void submitClick(ClickEvent event) {
+        if ((titleText.getText() == null) || ("".equals(titleText.getText())) ) {
+            Window.alert("Поле TITLE должно быть заполнено - создание задачи отменено!");
+            return;
+        }
+        if ((ownerText.getText() == null) || ("".equals(ownerText.getText())) ) {
+            Window.alert("Поле OWNER должно быть заполнено - создание задачи отменено!");
+            return;
+        }
+        if ((executorText.getText() == null) || ("".equals(executorText.getText())) ) {
+            Window.alert("Поле EXECUTOR должно быть заполнено - создание задачи отменено!");
+            return;
+        }
+        if ((descriptionText.getText() == null) || ("".equals(descriptionText.getText())) ) {
+            Window.alert("Поле DESCRIPTION должно быть заполнено - создание задачи отменено!");
+            return;
+        }
+
+        TasksClient tasksClient = GWT.create(TasksClient.class);
+        TaskDto taskDto = new TaskDto(null, titleText.getText(), ownerText.getText(), executorText.getText(), descriptionText.getText());
+        tasksClient.save(Storage.getLocalStorageIfSupported().getItem("jwt"), taskDto, new MethodCallback<Void>() {
+            @Override
+            public void onFailure(Method method, Throwable throwable) {
+                Window.alert("Ошибка при добавлении задачи " + titleText.getText());
+            }
+
+            @Override
+            public void onSuccess(Method method, Void aVoid) {
+                tasksTableAdminWidget.refresh();
+            }
+        });
+    }
+}
+
+
+
+
+AddTaskForm.ui.xml :
+
+<ui:UiBinder xmlns:ui='urn:ui:com.google.gwt.uibinder'
+             xmlns:g='urn:import:com.google.gwt.user.client.ui'>
+    <g:DecoratorPanel>
+        <g:FormPanel ui:field="form" method="POST">
+            <g:VerticalPanel spacing="10">
+                <g:HorizontalPanel>
+                    <g:Label text="ID:" width="100px"/>
+                    <g:TextBox enabled="false" name="id" ui:field="idText" width="200px"/>
+                </g:HorizontalPanel>
+                <g:HorizontalPanel>
+                    <g:Label text="Title:" width="100px"/>
+                    <g:TextBox name="title" ui:field="titleText" width="200px"/>
+                </g:HorizontalPanel>
+                <g:HorizontalPanel>
+                    <g:Label text="Owner:" width="100px"/>
+                    <g:TextBox name="owner" ui:field="ownerText" width="200px"/>
+                </g:HorizontalPanel>
+                <g:HorizontalPanel>
+                    <g:Label text="Executor:" width="100px"/>
+                    <g:TextBox name="executor" ui:field="executorText" width="200px"/>
+                </g:HorizontalPanel>
+                <g:HorizontalPanel>
+                    <g:Label text="Description:" width="100px"/>
+                    <g:TextBox name="description" ui:field="descriptionText" width="200px"/>
+                </g:HorizontalPanel>
+
+                <g:HorizontalPanel>
+                    <g:Label text="Status:" width="100px"/>
+                    <g:ListBox name="status_id" width="209px">
+                        <g:item value="1">CREATED</g:item>
+                        <g:item value="2">IN_WORK</g:item>
+                        <g:item value="3">CLOSED</g:item>
+                        <g:item value="4">REJECTED</g:item>
+                        <g:item value="5">SUSPENDED</g:item>
+                    </g:ListBox>
+                </g:HorizontalPanel>
+                <g:Button ui:field="btnSubmit">Добавить задачу</g:Button>
+            </g:VerticalPanel>
+        </g:FormPanel>
+    </g:DecoratorPanel>
+</ui:UiBinder>
+
+
+
+
+
+public class TasksTableAdminWidget extends Composite {
+    @UiField
+    CellTable<TaskDto> table;
+
+    private TasksClient client;
+
+    @UiTemplate("TasksTableAdmin.ui.xml")
+    interface TasksTableBinder extends UiBinder<Widget, TasksTableAdminWidget> {
+    }
+
+    private static TasksTableBinder uiBinder = GWT.create(TasksTableBinder.class);
+
+    public TasksTableAdminWidget() {
+        initWidget(uiBinder.createAndBindUi(this));
+
+        TextColumn<TaskDto> idColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getId().toString();
+            }
+        };
+        table.addColumn(idColumn, "ID");
+
+        TextColumn<TaskDto> titleColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getTitle();
+            }
+        };
+        table.addColumn(titleColumn, "Title");
+
+        TextColumn<TaskDto> ownerColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getOwner();
+            }
+        };
+        table.addColumn(ownerColumn, "Owner");
+
+        TextColumn<TaskDto> executorColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getExecutor();
+            }
+        };
+        table.addColumn(executorColumn, "Executor");
+
+        TextColumn<TaskDto> descriptionColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getDescription();
+            }
+        };
+        table.addColumn(descriptionColumn, "Description");
+
+        client = GWT.create(TasksClient.class);
+        // добавить кнопку удаления задачи
+        Column<TaskDto, Long> actionColumn = new Column<TaskDto, Long>(new ActionCell<Long>("REMOVE", new ActionCell.Delegate<Long>() {
+            @Override
+            public void execute(Long aLong) {
+                client.delete(Storage.getLocalStorageIfSupported().getItem("jwt"), aLong.toString(), new MethodCallback<Void>() {
+                    @Override
+                    public void onFailure(Method method, Throwable throwable) {
+                        GWT.log(throwable.toString());
+                        GWT.log(throwable.getMessage());
+                        GWT.log("Status code: " + method.getResponse().getStatusCode());
+                    }
+
+                    @Override
+                    public void onSuccess(Method method, Void result) {
+                        GWT.log("Status code: " + method.getResponse().getStatusCode());
+                        refresh();
+                    }
+                });
+            }
+        })) {
+            @Override
+            public Long getValue(TaskDto taskDto) {
+                return taskDto.getId();
+            }
+        };
+
+        table.addColumn(actionColumn, "Actions");
+        table.setColumnWidth(idColumn, 100, Style.Unit.PX);
+    }
+
+    public void refresh() {
+        String token = Storage.getLocalStorageIfSupported().getItem("jwt");
+        GWT.log("STORAGE: " + token);
+        client.getAll(token, new MethodCallback<List<TaskDto>>() {
+            @Override
+            public void onFailure(Method method, Throwable throwable) {
+                GWT.log(throwable.toString());
+                GWT.log(throwable.getMessage());
+                GWT.log("Status code: " + method.getResponse().getStatusCode());
+                Window.alert("Невозможно получить список задач: Сервер не отвечает");
+            }
+
+            @Override
+            public void onSuccess(Method method, List<TaskDto> i) {
+                GWT.log("Получено " + i.size() + " задач");
+                GWT.log("Status code: " + method.getResponse().getStatusCode());
+                table.setRowData(i);
+            }
+        });
+    }
+
+    @UiHandler("btnAdminRefresh")
+    public void submitClick(ClickEvent event) {
+        refresh();
+    }
+}
+
+
+
+
+
+TasksTableAdmin.ui.xml :
+
+<ui:UiBinder xmlns:ui='urn:ui:com.google.gwt.uibinder'
+             xmlns:g='urn:import:com.google.gwt.user.client.ui'
+             xmlns:c='urn:import:com.google.gwt.user.cellview.client'>
+    <g:VerticalPanel>
+        <g:Button ui:field="btnAdminRefresh">Refresh</g:Button>
+        <c:CellTable ui:field="table" width="100%" pageSize="15">
+        </c:CellTable>
+    </g:VerticalPanel>
+</ui:UiBinder>
+
+
+
+
+
+public class TasksTableUserWidget extends Composite {
+    @UiField
+    CellTable<TaskDto> table;
+
+    private TasksClient client;
+
+    @UiTemplate("TasksTableUser.ui.xml")
+    interface TasksTableBinder extends UiBinder<Widget, TasksTableUserWidget> {
+    }
+
+    private static TasksTableBinder uiBinder = GWT.create(TasksTableBinder.class);
+
+    public TasksTableUserWidget() {
+        initWidget(uiBinder.createAndBindUi(this));
+
+        TextColumn<TaskDto> idColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getId().toString();
+            }
+        };
+        table.addColumn(idColumn, "ID");
+
+        TextColumn<TaskDto> titleColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getTitle();
+            }
+        };
+        table.addColumn(titleColumn, "Title");
+
+        TextColumn<TaskDto> ownerColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getOwner();
+            }
+        };
+        table.addColumn(ownerColumn, "Owner");
+
+        TextColumn<TaskDto> executorColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getExecutor();
+            }
+        };
+        table.addColumn(executorColumn, "Executor");
+
+        TextColumn<TaskDto> descriptionColumn = new TextColumn<TaskDto>() {
+            @Override
+            public String getValue(TaskDto taskDto) {
+                return taskDto.getDescription();
+            }
+        };
+        table.addColumn(descriptionColumn, "Description");
+        client = GWT.create(TasksClient.class);
+    }
+
+    public void refresh() {
+        String token = Storage.getLocalStorageIfSupported().getItem("jwt");
+        GWT.log("STORAGE: " + token);
+        client.getAll(token, new MethodCallback<List<TaskDto>>() {
+            @Override
+            public void onFailure(Method method, Throwable throwable) {
+                GWT.log(throwable.toString());
+                GWT.log(throwable.getMessage());
+                GWT.log("Status code: " + method.getResponse().getStatusCode());
+                Window.alert("Невозможно получить список задач: Сервер не отвечает");
+            }
+
+            @Override
+            public void onSuccess(Method method, List<TaskDto> i) {
+                GWT.log("Получено " + i.size() + " задач");
+                GWT.log("Status code: " + method.getResponse().getStatusCode());
+                table.setRowData(i);
+            }
+        });
+    }
+
+    @UiHandler("btnUserRefresh")
+    public void submitClick(ClickEvent event) {
+        refresh();
+    }
+}
+
+
+
+
+TasksTableUser.ui.xml :
+
+<ui:UiBinder xmlns:ui='urn:ui:com.google.gwt.uibinder'
+             xmlns:g='urn:import:com.google.gwt.user.client.ui'
+             xmlns:c='urn:import:com.google.gwt.user.cellview.client'>
+    <g:VerticalPanel>
+        <g:Button ui:field="btnUserRefresh">Refresh</g:Button>
+        <c:CellTable ui:field="table" width="100%" pageSize="15">
+        </c:CellTable>
+    </g:VerticalPanel>
+</ui:UiBinder>
+
+
+
+
+
+public class WebApp implements EntryPoint {
+    public void onModuleLoad() {
+        Defaults.setServiceRoot("http://localhost:8189/gwt-rest");
+
+        TasksTableAdminWidget tasksTableAdminWidget = new TasksTableAdminWidget();
+        TasksTableUserWidget tasksTableUserWidget = new TasksTableUserWidget();
+
+        VerticalPanel verticalPanel = new VerticalPanel();
+        verticalPanel.add(new AddTaskFormWidget(tasksTableAdminWidget));
+        verticalPanel.add(tasksTableAdminWidget);
+
+        VerticalPanel onlyTasksView = new VerticalPanel();
+        onlyTasksView.add(tasksTableUserWidget);
+
+        TabLayoutPanel tabPanel = new TabLayoutPanel(2.5, Style.Unit.EM);
+        tabPanel.setAnimationDuration(100);
+        tabPanel.getElement().getStyle().setMarginBottom(10.0, Style.Unit.PX);
+
+        LoginFormTasks loginForm = new LoginFormTasks(tabPanel, tasksTableAdminWidget, tasksTableUserWidget);
+        tabPanel.add(loginForm, "Login");
+        tabPanel.add(verticalPanel, "Admin");
+        tabPanel.add(onlyTasksView, "User");
+        tabPanel.setHeight("800px");
+
+        tabPanel.selectTab(0);
+        tabPanel.ensureDebugId("cwTabPanel");
+        tabPanel.getTabWidget(0).setVisible(false);
+        tabPanel.getTabWidget(1).setVisible(false);
+        tabPanel.getTabWidget(2).setVisible(false);
+
+        RootPanel.get().add(tabPanel);
+   }
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  SERVER
+///////////////////////////////////////////////////////////////////////////////////////
+
+V1__initialize.sql
+
+DROP TABLE IF EXISTS statuses;
+CREATE TABLE statuses (id bigserial, title varchar(255), primary key (id));
+insert into statuses (id, title) values (1, 'CREATED');
+insert into statuses (id, title) values (2, 'IN_WORK');
+insert into statuses (id, title) values (3, 'CLOSED');
+insert into statuses (id, title) values (4, 'REJECTED');
+insert into statuses (id, title) values (5, 'SUSPENDED');
+
+
+DROP TABLE IF EXISTS tasks;
+CREATE TABLE tasks (id bigserial,
+                    title varchar(255),
+                    owner varchar(255),
+                    executor varchar(255),
+                    description varchar(255),
+                    status_id bigint, foreign key (status_id) references statuses (id),
+                    primary key(id) );
+
+insert into tasks (id, title, owner, executor, description, status_id) values ( 1, 'Task1',  'Owner1',  'Executor1',  'Description1',  1);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 2, 'Task2',  'Owner2',  'Executor2',  'Description2',  2);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 3, 'Task3',  'Owner3',  'Executor3',  'Description3',  3);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 4, 'Task4',  'Owner4',  'Executor4',  'Description4',  4);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 5, 'Task5',  'Owner5',  'Executor5',  'Description5',  5);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 6, 'Task6',  'Owner6',  'Executor6',  'Description6',  1);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 7, 'Task7',  'Owner7',  'Executor7',  'Description7',  2);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 8, 'Task8',  'Owner8',  'Executor8',  'Description8',  3);
+insert into tasks (id, title, owner, executor, description, status_id) values ( 9, 'Task9',  'Owner9',  'Executor9',  'Description9',  4);
+insert into tasks (id, title, owner, executor, description, status_id) values (10, 'Task10', 'Owner10', 'Executor10', 'Description10', 5);
+
+
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (id bigserial, username varchar(30), password varchar(80), email varchar(50), PRIMARY KEY(id));
+
+insert into users (id, username, password, email) values (1, 'admin', '$2a$04$Fx/SX9.BAvtPlMyIIqqFx.hLY2Xp8nnhpzvEEVINvVpwIPbA3v/.i', 'admin@gmail.com');
+insert into users (id, username, password, email) values (2, 'user',  '$2a$04$Fx/SX9.BAvtPlMyIIqqFx.hLY2Xp8nnhpzvEEVINvVpwIPbA3v/.i', 'user@gmail.com');
+
+
+DROP TABLE IF EXISTS roles;
+CREATE TABLE roles (id bigserial, name varchar(50), PRIMARY KEY (id));
+
+insert into roles (id, name) values (1, 'ROLE_USER');
+insert into roles (id, name) values (2, 'ROLE_MANAGER');
+insert into roles (id, name) values (3, 'ROLE_ADMIN');
+
+
+DROP TABLE IF EXISTS users_roles;
+CREATE TABLE users_roles ( user_id BIGINT NOT NULL, role_id BIGINT NOT NULL, PRIMARY KEY (user_id, role_id),
+  FOREIGN KEY (user_id)
+  REFERENCES users (id),
+  FOREIGN KEY (role_id)
+  REFERENCES roles (id)
+);
+
+insert into users_roles (user_id, role_id) values (1, 1);
+insert into users_roles (user_id, role_id) values (1, 2);
+insert into users_roles (user_id, role_id) values (1, 3);
+insert into users_roles (user_id, role_id) values (2, 1);
+
+
+
+
+
+flyway.conf
+
+# Памятка для Н2:
+# 1. Если возникает ошибка инициализации БД - помогает "Maven" - "spring-for-gwt-rest" - "Plugins" - "flyway" - "clean"
+# 2. При изменениях в файле V1_initialize.sql - удалить файл БД перед запуском проекта во избежание ошибок
+flyway.url=jdbc:h2:file:C:/Java/mydatabase;MODE=PostgreSQL
+flyway.user=sa
+
+
+
+
+application.properties
+
+# НАСТРОЙКИ WEB-ПРИЛОЖЕНИЯ
+# порт для запуска и путь для корня
+server.port=8189
+server.servlet.context-path=/gwt-rest
+
+# настройки стартера
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQL95Dialect
+
+# Примечание: для Н2 - выключить, если возникает ошибка "нет sequence"
+#spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false
+
+# bean для подключения к БД
+spring.datasource.driver-class-name=org.h2.Driver
+# bean для подключения к БД - можно вынести в private.properties для защиты данных
+spring.datasource.url=jdbc:h2:file:C:/Java/mydatabase;MODE=PostgreSQL
+spring.datasource.username=sa
+
+flyway.locations=classpath:resources/db/migration
+
+jwt.secret=helloworld
+
+
+
+
+
+@SpringBootApplication
+public class SimpleRestApplication {
+	public static void main(String[] args) {
+		SpringApplication.run(SimpleRestApplication.class, args);
+	}
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / configs
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+@Configuration
+public class AppConfig implements WebMvcConfigurer {
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**").allowedOrigins("http://127.0.0.1:8888").allowedMethods("POST", "DELETE", "PUT", "GET");
+    }
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/index").setViewName("forward:/WebApp.html");
+    }
+}
+
+
+
+
+
+@Configuration
+@EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+    @Autowired
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Autowired
+    private UserDetailsService jwtUserDetailsService;
+
+    @Autowired
+    private JwtRequestFilter jwtRequestFilter;
+
+    @Autowired
+    public void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(jwtUserDetailsService).passwordEncoder(passwordEncoder());
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
+
+    @Override
+    protected void configure(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity.csrf().disable()
+                .authorizeRequests()
+                .antMatchers("/authenticate", "/register").permitAll()
+                .anyRequest().authenticated()
+                .and().exceptionHandling().authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                .and().sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and().cors();
+
+        httpSecurity.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+    }
+}
+
+
+
+
+
+@Component
+public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException {
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+    }
+}
+
+
+
+
+
+@Component
+public class JwtRequestFilter extends OncePerRequestFilter {
+    private JwtUserDetailsService jwtUserDetailsService;
+    private JwtTokenUtil jwtTokenUtil;
+
+    @Autowired
+    public void setJwtUserDetailsService(JwtUserDetailsService jwtUserDetailsService) {
+        this.jwtUserDetailsService = jwtUserDetailsService;
+    }
+
+    @Autowired
+    public void setJwtTokenUtil(JwtTokenUtil jwtTokenUtil) {
+        this.jwtTokenUtil = jwtTokenUtil;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        final String requestTokenHeader = request.getHeader("Authorization");
+
+        String username = null;
+        String jwtToken = null;
+
+        if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
+            jwtToken = requestTokenHeader.substring(7);
+            try {
+                username = jwtTokenUtil.extractUsername(jwtToken);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Unable to get JWT Token");
+            } catch (ExpiredJwtException e) {
+                System.out.println("JWT Token has expired");
+            }
+        } else {
+            logger.warn("JWT Token does not begin with Bearer String");
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = jwtUserDetailsService.loadUserByUsername(username);
+            if (jwtTokenUtil.validateToken(jwtToken, userDetails)) {
+                UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
+                usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            }
+        }
+
+        chain.doFilter(request, response);
+    }
+}
+
+
+
+
+
+@Component
+public class JwtTokenUtil {
+	@Value("${jwt.secret}")
+	private String secret;
+
+	public String extractUsername(String token) {
+		return extractClaim(token, Claims::getSubject);
+	}
+
+	public Date extractExpirationDate(String token) {
+		return extractClaim(token, Claims::getExpiration);
+	}
+
+	public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+		final Claims claims = getAllClaimsFromToken(token);
+		return claimsResolver.apply(claims);
+	}
+
+	private Claims getAllClaimsFromToken(String token) {
+		return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+	}
+
+	private Boolean isTokenExpired(String token) {
+		final Date expiration = extractExpirationDate(token);
+		return expiration.before(new Date());
+	}
+
+	public String generateToken(UserDetails userDetails) {
+		Map<String, Object> claims = new HashMap<>();
+		claims.put("roles", userDetails.getAuthorities());
+		return generateToken(claims, userDetails.getUsername());
+	}
+
+	private String generateToken(Map<String, Object> claims, String subject) {
+		return Jwts.builder()
+				.setClaims(claims)
+				.setSubject(subject)
+				.setIssuedAt(new Date(System.currentTimeMillis()))
+				.setExpiration(new Date(System.currentTimeMillis() + 60 * 60 * 1000))
+				.signWith(SignatureAlgorithm.HS512, secret)
+				.compact();
+	}
+
+	public Boolean validateToken(String token, UserDetails userDetails) {
+		final String username = extractUsername(token);
+		return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+	}
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / controllers
+///////////////////////////////////////////////////////////////////////////////////////
+
+@RestController
+@CrossOrigin
+public class JwtAuthenticationController {
+    private AuthenticationManager authenticationManager;
+    private JwtTokenUtil jwtTokenUtil;
+    private JwtUserDetailsService userDetailsService;
+
+    @Autowired
+    public JwtAuthenticationController(AuthenticationManager authenticationManager, JwtTokenUtil jwtTokenUtil, JwtUserDetailsService userDetailsService) {
+        this.authenticationManager = authenticationManager;
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.userDetailsService = userDetailsService;
+    }
+
+    @PostMapping("/authenticate")
+    public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtAuthRequestDto authenticationRequest) throws Exception {
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword()));
+        } catch (BadCredentialsException e) {
+//            throw new Exception("Incorrect username or password", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Incorrect username or password");
+        }
+
+        final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
+        final String token = jwtTokenUtil.generateToken(userDetails);
+        return ResponseEntity.ok(new JwtAuthResponseDto(token));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> saveUser(@RequestBody UserDto user) {
+        return ResponseEntity.ok(userDetailsService.save(user));
+    }
+}
+
+
+
+
+
+@RestController
+@CrossOrigin
+public class MainController {
+    private TaskService taskService;
+
+    @Autowired
+    public MainController(TaskService taskService) {
+        this.taskService = taskService;
+    }
+
+    @GetMapping("/simple")
+    public TaskDto simple() {
+        return new TaskDto(1L, "Task 1", "Owner 1", "Executor 1", "Description 1");
+    }
+
+    @GetMapping("/tasks/demo_params")
+    public void removeTasks(@RequestParam String title) {
+        System.out.println(title);
+    }
+
+    @PostMapping("/tasks/take_json_obj")
+    public void takeDto(@RequestBody TaskDto taskDto) {
+        System.out.println(taskDto);
+    }
+}
+
+
+
+
+
+@RestController
+@RequestMapping("/api/v1/tasks")
+public class TaskController {
+    private TaskService taskService;
+
+    @Autowired
+    public TaskController(TaskService itemService) {
+        this.taskService = itemService;
+    }
+
+    @GetMapping
+    public List<TaskDto> getAllItems() {
+        return taskService.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public TaskDto getItem(@PathVariable Long id) {
+        return taskService.findOne(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteItem(@PathVariable Long id) {
+        taskService.remove(id);
+        return new ResponseEntity<>("Задача успешно удалена", HttpStatus.OK);
+    }
+
+    @PostMapping
+    public TaskDto createNewItem(@RequestBody TaskDto itemDto) {
+        if (itemDto.getId() != null && taskService.existsById(itemDto.getId())) {
+            throw new ResourceAlreadyExistException("Уже существует задача с id = " + itemDto.getId());
+        }
+        return taskService.save(itemDto);
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<?> exceptionInterceptor(ResourceAlreadyExistException exc) {
+        ErrorDto errorDto = new ErrorDto(HttpStatus.BAD_REQUEST.value(), exc.getMessage());
+        ResponseEntity<ErrorDto> res = new ResponseEntity<ErrorDto>(errorDto, HttpStatus.BAD_REQUEST);
+        return res;
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / entities
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+@Entity
+@Table(name = "tasks")
+public class Task {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+    @Column(name = "title")
+    private String title;
+    @Column(name = "owner")
+    private String owner;
+    @Column(name = "executor")
+    private String executor;
+    @Column(name = "description")
+    private String description;
+    @ManyToOne
+    @JoinColumn(name = "status_id")
+    private Status status;
+
+    // Геттеры
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public String getOwner() { return owner; }
+    public String getExecutor() { return executor; }
+    public String getDescription() { return description; }
+    public Status getStatus() { return status; }
+
+    // Сеттеры
+    public void setId(Long id) { this.id = id; }
+    public void setTitle(String title) { this.title = title; }
+    public void setOwner(String owner) { this.owner = owner; }
+    public void setExecutor(String executor) { this.executor = executor; }
+    public void setDescription(String description) { this.description = description; }
+    public void setStatus(Status status) { this.status = status; }
+
+    public Task(TaskDto taskDto) {
+        this.id = taskDto.getId();
+        this.title = taskDto.getTitle();
+        this.owner = taskDto.getOwner();
+        this.executor = taskDto.getExecutor();
+        this.description = taskDto.getDescription();
+        //this.status = taskDto.getStatus();
+    }
+
+    public Task() { }
+}
+
+
+
+
+
+@Entity
+@Table(name = "statuses")
+public class Status {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "title")
+    private String title;
+
+    @OneToMany(mappedBy = "status")
+    private List<Task> tasks;
+
+    // Геттеры
+    public Long getId() { return id; }
+    public String getTitle() { return title; }
+    public List<Task> getTasks() { return tasks; }
+
+    // Сеттеры
+    public void setId(Long id) { this.id = id; }
+    public void setTitle(String title) { this.title = title; }
+    public void setTasks(List<Task> tasks) { this.tasks = tasks; }
+
+    public Status() { }
+}
+
+
+
+
+
+@Entity
+@Table(name = "users")
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "username")
+    private String username;
+
+    @Column(name = "password")
+    private String password;
+
+    @Column(name = "email")
+    private String email;
+
+    @ManyToMany
+    @JoinTable(name = "users_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Collection<Role> roles;
+
+    // Геттеры
+    public Long getId() { return id; }
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
+    public String getEmail() { return email; }
+    // Сеттеры
+    public void setId(Long id) { this.id = id; }
+    public void setUsername(String username) { this.username = username; }
+    public void setPassword(String password) { this.password = password; }
+    public void setEmail(String email) { this.email = email; }
+
+    public Collection<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Collection<Role> roles) {
+        this.roles = roles;
+    }
+
+    public User() {
+    }
+}
+
+
+
+
+
+@Entity
+@Table(name = "roles")
+public class Role {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id")
+	private Long id;
+	@Column(name = "name")
+	private String name;
+
+	// Геттеры
+	public Long getId() { return id; }
+	public String getName() { return name; }
+	// Сеттеры
+	public void setId(Long id) { this.id = id; }
+	public void setName(String name) { this.name = name; }
+
+	public Role(String name) { this.name = name; }
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Role role = (Role) o;
+		return Objects.equals(id, role.id) &&
+				Objects.equals(name, role.name);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id, name);
+	}
+
+	public Role() {
+	}
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / exceptions
+///////////////////////////////////////////////////////////////////////////////////////
+
+public class ResourceAlreadyExistException extends RuntimeException {
+    public ResourceAlreadyExistException(String message) {
+        super(message);
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / mappers
+///////////////////////////////////////////////////////////////////////////////////////
+
+@Mapper
+public interface StatusMapper {
+    StatusMapper MAPPER = Mappers.getMapper(StatusMapper.class);
+
+    Status toCategory(StatusDto statusDto);
+
+    @InheritInverseConfiguration
+    StatusDto fromCategory(Status status);
+}
+
+
+
+
+
+@Mapper(uses = { StatusMapper.class })
+public interface TaskMapper {
+    TaskMapper MAPPER = Mappers.getMapper(TaskMapper.class);
+
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "title", target = "title")
+    @Mapping(source = "owner", target = "owner")
+    @Mapping(source = "executor", target = "executor")
+    @Mapping(source = "description", target = "description")
+    @Mapping(source = "status", target = "status")
+    Task toTask(TaskDto taskDto);
+
+    @InheritInverseConfiguration
+    TaskDto fromTask(Task task);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / repositories
+///////////////////////////////////////////////////////////////////////////////////////
+
+@Repository
+public interface RoleRepository extends CrudRepository<Role, Long> {
+	Role findOneByName(String name);
+}
+
+
+
+
+
+@Repository
+public interface TaskRepository extends JpaRepository<Task, Long> {
+
+    @Query("SELECT new com.geekbrains.gwt.common.TaskDto(t.id, t.title, t.owner, t.executor, t.description) FROM Task t")
+    List<TaskDto> findAllDtos();
+
+    @Query("SELECT new com.geekbrains.gwt.common.TaskDto(t.id, t.title, t.owner, t.executor, t.description) FROM Task t WHERE t.id = ?1")
+    TaskDto findDto(Long id);
+
+}
+
+
+
+
+@Repository
+public interface UserRepository extends CrudRepository<User, Long> {
+    User findOneByUsername(String username);
+}
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+//  / services
+///////////////////////////////////////////////////////////////////////////////////////
+
+@Service
+public class JwtUserDetailsService implements UserDetailsService {
+    private UserRepository userRepository;
+    private PasswordEncoder bcryptEncoder;
+
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
+    @Autowired
+    public void setBcryptEncoder(PasswordEncoder bcryptEncoder) {
+        this.bcryptEncoder = bcryptEncoder;
+    }
+
+    @Override
+    @Transactional
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepository.findOneByUsername(username);
+        if (user == null) {
+            throw new UsernameNotFoundException("User not found with username: " + username);
+        }
+        Collection<? extends GrantedAuthority> authorities = user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName())).collect(Collectors.toList());
+        return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), authorities);
+    }
+
+    public User save(UserDto userDto) {
+        User newUser = new User();
+        newUser.setUsername(userDto.getUsername());
+        newUser.setPassword(bcryptEncoder.encode(userDto.getPassword()));
+        return userRepository.save(newUser);
+    }
+}
+
+
+
+
+
+@Service
+public class TaskService {
+    private TaskRepository taskRepository;
+
+    @Autowired
+    public void setTaskRepository(TaskRepository taskRepository) {
+        this.taskRepository = taskRepository;
+    }
+
+    public TaskDto save(TaskDto taskDto) {
+        Task task = taskRepository.save(new Task(taskDto));
+        return new TaskDto(task.getId(), task.getTitle(), task.getOwner(), task.getExecutor(), task.getDescription());
+    }
+
+    public List<TaskDto> findAll() {
+        return taskRepository.findAllDtos();
+    }
+
+    public TaskDto findOne(Long id) {
+        return taskRepository.findDto(id);
+    }
+
+    public void remove(Long id) {
+        taskRepository.deleteById(id);
+    }
+
+    public boolean existsById(Long id) {
+        return taskRepository.existsById(id);
+    }
+}
